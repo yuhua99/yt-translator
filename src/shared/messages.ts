@@ -1,3 +1,4 @@
+import type { ProviderConfig, ProviderSecret } from '../background/providers/types';
 import type { AsrCueItem, ManualTranslationItem } from '../youtube/translation-validation';
 
 export interface ExtensionSettings {
@@ -60,10 +61,14 @@ export type ExtensionMessage =
   | { type: 'GET_SETTINGS' }
   | { type: 'SET_SETTINGS'; settings: ExtensionSettings }
   | { type: 'PING' }
+  | { type: 'GET_PROVIDER_CONFIG'; providerId: string }
+  | { type: 'SET_PROVIDER_CONFIG'; config: ProviderConfig }
+  | { type: 'SET_PROVIDER_SECRET'; providerId: string; secret: ProviderSecret }
   | TranslateSubtitleMessage
   | TranslateAsrSubtitleMessage;
 
 export type SettingsResponse = { ok: true; settings: ExtensionSettings } | { ok: false; error: string };
 export type MessageResponse = { ok: true; message: string } | { ok: false; error: string };
+export type ProviderConfigResponse = { ok: true; config: ProviderConfig } | { ok: false; error: string };
 export type TranslationResponse = TranslateSubtitleResult | TranslateAsrSubtitleResult | { ok: false; error: string };
-export type ExtensionResponse = SettingsResponse | MessageResponse | TranslationResponse;
+export type ExtensionResponse = SettingsResponse | MessageResponse | ProviderConfigResponse | TranslationResponse;

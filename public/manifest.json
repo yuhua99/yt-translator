@@ -19,7 +19,7 @@
     }
   ],
   "permissions": ["storage"],
-  "host_permissions": ["https://www.youtube.com/*"],
+  "host_permissions": ["https://www.youtube.com/*", "https://api.openai.com/*", "https://api.anthropic.com/*"],
   "web_accessible_resources": [
     {
       "resources": ["youtube.js"],

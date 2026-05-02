@@ -1,3 +1,4 @@
+import { getProviderConfig, setProviderConfig, setProviderSecret } from './providers/storage';
 import { translateAsrSubtitleMessage, translateSubtitleMessage } from './providers/subtitle-translation';
 import { getSettings, setSettings } from './settings-storage';
 import type { ExtensionMessage, ExtensionResponse } from '../shared/messages';
@@ -20,13 +21,30 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
         return;
       }
 
+      if (message.type === 'GET_PROVIDER_CONFIG') {
+        sendResponse({ ok: true, config: await getProviderConfig(chrome.storage.sync, message.providerId) } satisfies ExtensionResponse);
+        return;
+      }
+
+      if (message.type === 'SET_PROVIDER_CONFIG') {
+        await setProviderConfig(chrome.storage.sync, message.config);
+        sendResponse({ ok: true, message: 'provider config saved' } satisfies ExtensionResponse);
+        return;
+      }
+
+      if (message.type === 'SET_PROVIDER_SECRET') {
+        await setProviderSecret(chrome.storage.local, message.providerId, message.secret);
+        sendResponse({ ok: true, message: 'provider secret saved' } satisfies ExtensionResponse);
+        return;
+      }
+
       if (message.type === 'TRANSLATE_SUBTITLE_AI_PROVIDER') {
-        sendResponse(await translateSubtitleMessage(message) satisfies ExtensionResponse);
+        sendResponse(await translateSubtitleMessage(message, { sync: chrome.storage.sync, local: chrome.storage.local }) satisfies ExtensionResponse);
         return;
       }
 
       if (message.type === 'TRANSLATE_ASR_SUBTITLE_BATCH') {
-        sendResponse(await translateAsrSubtitleMessage(message) satisfies ExtensionResponse);
+        sendResponse(await translateAsrSubtitleMessage(message, { sync: chrome.storage.sync, local: chrome.storage.local }) satisfies ExtensionResponse);
         return;
       }
 

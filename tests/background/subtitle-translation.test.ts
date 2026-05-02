@@ -1,5 +1,24 @@
 import { describe, expect, test } from 'bun:test';
 import { translateAsrSubtitleMessage, translateSubtitleMessage } from '../../src/background/providers/subtitle-translation';
+import type { ProviderStores, ProviderStorageArea } from '../../src/background/providers/storage';
+
+function createMemoryStorage(initial: Record<string, unknown> = {}): ProviderStorageArea {
+  const data = { ...initial };
+
+  return {
+    async get(key: string): Promise<Record<string, unknown>> {
+      return { [key]: data[key] };
+    },
+    async set(items: Record<string, unknown>): Promise<void> {
+      Object.assign(data, items);
+    },
+  };
+}
+
+const stores: ProviderStores = {
+  sync: createMemoryStorage(),
+  local: createMemoryStorage(),
+};
 
 describe('translateSubtitleMessage', () => {
   test('returns provider-agnostic manual translations by id', async () => {
@@ -13,12 +32,13 @@ describe('translateSubtitleMessage', () => {
         { id: 'a', text: 'Hello', startMs: 0, endMs: 1000 },
         { id: 'b', text: 'World', startMs: 1000 },
       ],
-    })).resolves.toEqual({
+    }, stores)).resolves.toEqual({
       ok: true,
       translations: [
         { id: 'a', text: '[Traditional Chinese] Hello' },
         { id: 'b', text: '[Traditional Chinese] World' },
       ],
+      usage: undefined,
     });
   });
 
@@ -30,7 +50,7 @@ describe('translateSubtitleMessage', () => {
       trackId: 'en::manual',
       targetLanguage: 'Traditional Chinese',
       items: [],
-    })).rejects.toThrow('Unsupported provider: unknown');
+    }, stores)).rejects.toThrow('Provider config not found: unknown');
   });
 });
 
@@ -46,12 +66,13 @@ describe('translateAsrSubtitleMessage', () => {
         { id: 's1', startMs: 0, text: 'hello' },
         { id: 's2', startMs: 1500, text: 'world' },
       ],
-    })).resolves.toEqual({
+    }, stores)).resolves.toEqual({
       ok: true,
       cues: [
         { startMs: 0, endMs: 1500, text: '[Traditional Chinese] hello', sourceSegmentIds: ['s1'] },
         { startMs: 1500, endMs: 3500, text: '[Traditional Chinese] world', sourceSegmentIds: ['s2'] },
       ],
+      usage: undefined,
     });
   });
 });
