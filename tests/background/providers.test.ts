@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { AnthropicProvider } from '../../src/background/providers/anthropic';
 import { parseJsonObject } from '../../src/background/providers/json';
 import { OpenAiProvider } from '../../src/background/providers/openai';
+import { OPENCODE_GO_BASE_URL, OpencodeGoProvider } from '../../src/background/providers/opencode-go';
+import { createProvider } from '../../src/background/providers/factory';
 import { getProviderConfig, getProviderSecret, setProviderConfig, setProviderSecret, type ProviderStorageArea } from '../../src/background/providers/storage';
 
 const originalFetch = globalThis.fetch;
@@ -63,6 +65,22 @@ describe('OpenAiProvider', () => {
     expect(request?.url).toBe('https://api.openai.com/v1/chat/completions');
     expect(request?.headers.get('authorization')).toBe('Bearer key');
     expect(result).toEqual({ translations: [{ id: 'a', text: '你好' }], usage: { inputTokens: 10, outputTokens: 5 } });
+  });
+});
+
+describe('OpencodeGoProvider', () => {
+  test('uses opencode Go OpenAI-compatible base URL', async () => {
+    let request: Request | undefined;
+    globalThis.fetch = async (input, init) => {
+      request = new Request(input, init);
+      return Response.json({ choices: [{ message: { content: '{"translations":[{"id":"a","text":"你好"}]}' } }] });
+    };
+
+    const provider = new OpencodeGoProvider({ id: 'go-main', type: 'opencode-go', model: 'go' }, { apiKey: 'key' });
+    await provider.translateManual({ targetLanguage: 'Traditional Chinese', items: [{ id: 'a', text: 'Hello', startMs: 0 }] });
+
+    expect(request?.url).toBe(`${OPENCODE_GO_BASE_URL}/chat/completions`);
+    expect(createProvider({ id: 'go-main', type: 'opencode-go', model: 'go' }, { apiKey: 'key' })).toBeInstanceOf(OpencodeGoProvider);
   });
 });
 

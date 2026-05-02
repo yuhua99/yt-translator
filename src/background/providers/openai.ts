@@ -14,6 +14,7 @@ export class OpenAiProvider implements AiProvider {
   constructor(
     private readonly config: ProviderConfig,
     private readonly secret: ProviderSecret,
+    private readonly defaultBaseUrl = 'https://api.openai.com/v1',
   ) {}
 
   async translateManual(input: ManualTranslateInput): Promise<ManualTranslateOutput> {
@@ -35,7 +36,7 @@ export class OpenAiProvider implements AiProvider {
       throw new Error(`Missing API key for provider: ${this.config.id}`);
     }
 
-    const response = await fetch(`${this.config.baseUrl ?? 'https://api.openai.com/v1'}/chat/completions`, {
+    const response = await fetch(`${this.config.baseUrl ?? this.defaultBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'authorization': `Bearer ${apiKey}`,

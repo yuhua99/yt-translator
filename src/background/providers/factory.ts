@@ -1,6 +1,7 @@
 import { AnthropicProvider } from './anthropic';
 import { MockProvider } from './mock';
 import { OpenAiProvider } from './openai';
+import { OpencodeGoProvider } from './opencode-go';
 import type { AiProvider, ProviderConfig, ProviderSecret } from './types';
 
 export function createProvider(config: ProviderConfig, secret: ProviderSecret): AiProvider {
@@ -14,6 +15,10 @@ export function createProvider(config: ProviderConfig, secret: ProviderSecret): 
 
   if (config.type === 'anthropic') {
     return new AnthropicProvider(config, secret);
+  }
+
+  if (config.type === 'opencode-go') {
+    return new OpencodeGoProvider(config, secret);
   }
 
   throw new Error(`Unsupported provider type: ${String(config.type)}`);
