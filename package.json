@@ -1,0 +1,20 @@
+{
+  "name": "simple-translator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "dev": "bun run scripts/build.ts --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint .",
+    "test": "bun test",
+    "check": "bun run typecheck && bun run lint && bun test && bun run build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/chrome": "latest",
+    "oxlint": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,35 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 260px;
+}
+
+main {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+#status {
+  min-height: 1.2em;
+  margin: 0;
+}

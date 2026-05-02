@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Translator</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Simple Translator</h1>
+      <label>
+        <input id="enabled" type="checkbox" />
+        Enable translation
+      </label>
+      <label>
+        Target language
+        <input id="target-language" type="text" value="Traditional Chinese" />
+      </label>
+      <button id="save" type="button">Save</button>
+      <p id="status" role="status"></p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
