@@ -18,6 +18,12 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["storage", "scripting"],
-  "host_permissions": ["https://www.youtube.com/*"]
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.youtube.com/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["youtube.js"],
+      "matches": ["https://www.youtube.com/*"]
+    }
+  ]
 }
