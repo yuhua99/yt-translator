@@ -22,6 +22,19 @@ function createTranslatorClient(): TranslatorClient & { calls: string[][] } {
         translations: input.segments.map((segment) => ({ id: segment.id, text: `zh:${segment.text}` })),
       };
     },
+    async translateAsrSubtitle(input) {
+      calls.push(input.segments.map((segment) => segment.id));
+
+      return {
+        ok: true,
+        cues: input.segments.map((segment) => ({
+          startMs: segment.startMs,
+          endMs: segment.startMs + 1500,
+          text: `asr:${segment.text}`,
+          sourceSegmentIds: [segment.id],
+        })),
+      };
+    },
   };
 }
 
@@ -52,17 +65,9 @@ describe('YoutubeSubtitleSession', () => {
     ]);
   });
 
-  test('does not translate when disabled, CC off, ASR, or already completed', async () => {
+  test('does not translate when CC off or already completed', async () => {
     const client = createTranslatorClient();
     const session = new YoutubeSubtitleSession(settings, client);
-
-    session.handleCapturedCaptions({
-      url: 'https://www.youtube.com/api/timedtext?v=video-1&lang=en&kind=asr',
-      responseText: JSON.stringify({ events: [{ tStartMs: 1000, segs: [{ utf8: 'Hello' }] }] }),
-    });
-
-    await session.ensureTranslations(1000, true);
-    expect(client.calls).toEqual([]);
 
     session.handleCapturedCaptions({
       url: 'https://www.youtube.com/api/timedtext?v=video-1&lang=en',
@@ -75,6 +80,29 @@ describe('YoutubeSubtitleSession', () => {
     await session.ensureTranslations(1000, true);
     await session.ensureTranslations(1000, true);
     expect(client.calls).toHaveLength(1);
+  });
+
+  test('translates ASR captions into timed cues', async () => {
+    const client = createTranslatorClient();
+    const session = new YoutubeSubtitleSession(settings, client);
+
+    session.handleCapturedCaptions({
+      url: 'https://www.youtube.com/api/timedtext?v=video-1&lang=en&kind=asr',
+      responseText: JSON.stringify({ events: [{ tStartMs: 1000, segs: [{ utf8: 'Hello' }] }] }),
+    });
+
+    await session.ensureTranslations(1000, true);
+
+    expect(session.translatedCues).toEqual([
+      {
+        id: 'video-1:en::asr:asr-cue:1000-2500',
+        startMs: 1000,
+        endMs: 2500,
+        sourceText: 'Hello',
+        translatedText: 'asr:Hello',
+        sourceSegmentIds: ['video-1:en::asr:0'],
+      },
+    ]);
   });
 
   test('resetForNavigation clears state and aborts in-flight windows', () => {

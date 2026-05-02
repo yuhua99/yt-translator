@@ -56,7 +56,7 @@ export class YoutubeSubtitleSession {
   }
 
   async ensureTranslations(currentTimeMs: number, ccEnabled: boolean): Promise<void> {
-    if (!this.settings.enabled || !this.track || this.mode !== 'manual') {
+    if (!this.settings.enabled || !this.track) {
       return;
     }
 
@@ -90,36 +90,73 @@ export class YoutubeSubtitleSession {
     this.inFlightWindows.add(window.id);
 
     try {
-      const result = await this.translatorClient.translateSubtitle({
-        providerId: this.settings.providerId,
-        videoId: this.videoId,
-        track: this.track,
-        segments,
-        targetLanguage: this.settings.targetLanguage,
-      }, this.abortController.signal);
-
-      const translations = new Map(result.translations.map((item) => [item.id, item.text]));
-
-      for (const segment of segments) {
-        const translatedText = translations.get(segment.id);
-
-        if (!translatedText) {
-          continue;
-        }
-
-        this.translatedCues.push({
-          id: segment.id,
-          startMs: segment.startMs,
-          endMs: segment.endMs ?? segment.startMs + 2_000,
-          sourceText: segment.text,
-          translatedText,
-          sourceSegmentIds: [segment.id],
-        });
+      if (this.mode === 'asr') {
+        await this.translateAsrSegments(segments);
+      } else {
+        await this.translateManualSegments(segments);
       }
 
       this.completedWindows.add(window.id);
     } finally {
       this.inFlightWindows.delete(window.id);
+    }
+  }
+
+  private async translateManualSegments(segments: CaptionSegment[]): Promise<void> {
+    if (!this.track) {
+      return;
+    }
+
+    const result = await this.translatorClient.translateSubtitle({
+      providerId: this.settings.providerId,
+      videoId: this.videoId,
+      track: this.track,
+      segments,
+      targetLanguage: this.settings.targetLanguage,
+    }, this.abortController.signal);
+
+    const translations = new Map(result.translations.map((item) => [item.id, item.text]));
+
+    for (const segment of segments) {
+      const translatedText = translations.get(segment.id);
+
+      if (!translatedText) {
+        continue;
+      }
+
+      this.translatedCues.push({
+        id: segment.id,
+        startMs: segment.startMs,
+        endMs: segment.endMs ?? segment.startMs + 2_000,
+        sourceText: segment.text,
+        translatedText,
+        sourceSegmentIds: [segment.id],
+      });
+    }
+  }
+
+  private async translateAsrSegments(segments: CaptionSegment[]): Promise<void> {
+    if (!this.track) {
+      return;
+    }
+
+    const result = await this.translatorClient.translateAsrSubtitle({
+      providerId: this.settings.providerId,
+      videoId: this.videoId,
+      track: this.track,
+      segments,
+      targetLanguage: this.settings.targetLanguage,
+    }, this.abortController.signal);
+
+    for (const cue of result.cues) {
+      this.translatedCues.push({
+        id: `${this.videoId}:${this.track.trackId}:asr-cue:${cue.startMs}-${cue.endMs}`,
+        startMs: cue.startMs,
+        endMs: cue.endMs,
+        sourceText: segments.filter((segment) => cue.sourceSegmentIds.includes(segment.id)).map((segment) => segment.text).join(' '),
+        translatedText: cue.text,
+        sourceSegmentIds: cue.sourceSegmentIds,
+      });
     }
   }
 

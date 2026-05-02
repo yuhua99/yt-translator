@@ -1,3 +1,4 @@
+import { AsrOverlayRenderer } from '../youtube/asr-overlay-renderer';
 import { CAPTION_EVENT, type CaptionsCapturedEventDetail } from '../youtube/caption-capture-event';
 import { ManualSubtitleRenderer } from '../youtube/manual-renderer';
 import { YoutubeSubtitleSession } from '../youtube/session';
@@ -5,6 +6,7 @@ import { createRuntimeTranslatorClient } from '../youtube/translator-client';
 import type { ExtensionMessage, ExtensionSettings, SettingsResponse } from '../shared/messages';
 
 let session: YoutubeSubtitleSession | undefined;
+let asrOverlayRenderer: AsrOverlayRenderer | undefined;
 let manualRenderer: ManualSubtitleRenderer | undefined;
 
 function sendMessage(message: ExtensionMessage): Promise<SettingsResponse> {
@@ -44,11 +46,20 @@ async function scheduleCurrentWindow(video = document.querySelector('video')): P
   const ccEnabled = isCcEnabled();
 
   if (!ccEnabled) {
+    asrOverlayRenderer?.clear();
     manualRenderer?.clear();
     return;
   }
 
   await session.ensureTranslations(currentTimeMs, ccEnabled);
+
+  if (session.mode === 'asr') {
+    manualRenderer?.clear();
+    asrOverlayRenderer?.render(session.translatedCues, currentTimeMs);
+    return;
+  }
+
+  asrOverlayRenderer?.clear();
   manualRenderer?.render(session.translatedCues, currentTimeMs);
 }
 
@@ -59,8 +70,10 @@ function isCcEnabled(): boolean {
 
 function createSession(settings: ExtensionSettings): void {
   session?.stop();
+  asrOverlayRenderer?.clear();
   manualRenderer?.clear();
   session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient());
+  asrOverlayRenderer = new AsrOverlayRenderer();
   manualRenderer = new ManualSubtitleRenderer();
   session.start();
 }
