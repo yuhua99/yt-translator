@@ -3,11 +3,19 @@ import { createAsrPrompt, createManualPrompt } from './prompts';
 import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput, ProviderConfig, ProviderSecret, ProviderTestOutput } from './types';
 
 interface OpenAiResponse {
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{ message?: { content?: string | Array<{ text?: string; type?: string }> } }>;
+  output_text?: string;
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
   };
+}
+
+interface CompletionOptions {
+  maxTokens?: number;
+  json?: boolean;
+  system?: string;
+  allowEmptyContent?: boolean;
 }
 
 export class OpenAiProvider implements AiProvider {
@@ -30,11 +38,16 @@ export class OpenAiProvider implements AiProvider {
   }
 
   async testConnection(): Promise<ProviderTestOutput> {
-    const response = await this.complete('Reply with OK.', { maxTokens: 3, json: false, system: 'Reply with OK only.' });
-    return { ok: true, text: response.content.trim(), usage: response.usage };
+    const response = await this.complete('Reply with OK.', {
+      maxTokens: 8,
+      json: false,
+      system: 'Reply with OK only.',
+      allowEmptyContent: true,
+    });
+    return { ok: true, text: response.content.trim() || 'OK', usage: response.usage };
   }
 
-  private async complete(prompt: string, options: { maxTokens?: number; json?: boolean; system?: string } = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
+  private async complete(prompt: string, options: CompletionOptions = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
     const apiKey = this.secret.apiKey;
 
     if (!apiKey) {
@@ -59,23 +72,43 @@ export class OpenAiProvider implements AiProvider {
       }),
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-      throw new Error(`OpenAI request failed: ${response.status} ${await response.text()}`);
+      throw new Error(`OpenAI request failed: ${response.status} ${responseText}`);
     }
 
-    const json = await response.json() as OpenAiResponse;
-    const content = json.choices?.[0]?.message?.content;
+    const json = JSON.parse(responseText) as OpenAiResponse;
+    const content = extractOpenAiContent(json);
 
-    if (!content) {
-      throw new Error('OpenAI response missing message content');
+    if (!content && !options.allowEmptyContent) {
+      throw new Error(`OpenAI response missing message content: ${responseText.slice(0, 500)}`);
     }
 
     return {
-      content,
+      content: content ?? '',
       usage: {
         inputTokens: json.usage?.prompt_tokens,
         outputTokens: json.usage?.completion_tokens,
       },
     };
   }
+}
+
+function extractOpenAiContent(json: OpenAiResponse): string | undefined {
+  if (json.output_text) {
+    return json.output_text;
+  }
+
+  const content = json.choices?.[0]?.message?.content;
+
+  if (typeof content === 'string') {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    return content.map((part) => part.text ?? '').join('');
+  }
+
+  return undefined;
 }

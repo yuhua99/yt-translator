@@ -66,8 +66,16 @@ describe('OpenAiProvider', () => {
     const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-4.1-mini' }, { apiKey: 'key' });
 
     await expect(provider.testConnection()).resolves.toEqual({ ok: true, text: 'OK', usage: { inputTokens: 4, outputTokens: 1 } });
-    expect(requestBody?.max_tokens).toBe(3);
+    expect(requestBody?.max_tokens).toBe(8);
     expect(requestBody).not.toHaveProperty('response_format');
+  });
+
+  test('treats empty test content as successful connectivity check', async () => {
+    globalThis.fetch = async () => Response.json({ choices: [{ message: {} }] });
+
+    const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-4.1-mini' }, { apiKey: 'key' });
+
+    await expect(provider.testConnection()).resolves.toEqual({ ok: true, text: 'OK', usage: { inputTokens: undefined, outputTokens: undefined } });
   });
 
   test('sends chat completion request and parses manual translations', async () => {
