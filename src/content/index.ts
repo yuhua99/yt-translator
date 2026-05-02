@@ -1,9 +1,11 @@
 import { CAPTION_EVENT, type CaptionsCapturedEventDetail } from '../youtube/caption-capture-event';
+import { ManualSubtitleRenderer } from '../youtube/manual-renderer';
 import { YoutubeSubtitleSession } from '../youtube/session';
 import { createRuntimeTranslatorClient } from '../youtube/translator-client';
 import type { ExtensionMessage, ExtensionSettings, SettingsResponse } from '../shared/messages';
 
 let session: YoutubeSubtitleSession | undefined;
+let manualRenderer: ManualSubtitleRenderer | undefined;
 
 function sendMessage(message: ExtensionMessage): Promise<SettingsResponse> {
   return chrome.runtime.sendMessage(message);
@@ -38,7 +40,16 @@ async function scheduleCurrentWindow(video = document.querySelector('video')): P
     return;
   }
 
-  await session.ensureTranslations(video.currentTime * 1000, isCcEnabled());
+  const currentTimeMs = video.currentTime * 1000;
+  const ccEnabled = isCcEnabled();
+
+  if (!ccEnabled) {
+    manualRenderer?.clear();
+    return;
+  }
+
+  await session.ensureTranslations(currentTimeMs, ccEnabled);
+  manualRenderer?.render(session.translatedCues, currentTimeMs);
 }
 
 function isCcEnabled(): boolean {
@@ -48,7 +59,9 @@ function isCcEnabled(): boolean {
 
 function createSession(settings: ExtensionSettings): void {
   session?.stop();
+  manualRenderer?.clear();
   session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient());
+  manualRenderer = new ManualSubtitleRenderer();
   session.start();
 }
 
