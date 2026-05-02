@@ -1,4 +1,5 @@
 import type { CaptionSegment, CaptionTrack } from './caption-types';
+import type { ProviderType } from '../background/providers/types';
 import type { TranslateAsrSubtitleResult, TranslateSubtitleResult } from '../shared/messages';
 
 export interface TranslatorClient {
@@ -7,7 +8,7 @@ export interface TranslatorClient {
 }
 
 export interface TranslateSubtitleInput {
-  providerId: string;
+  providerType: ProviderType;
   videoId: string;
   track: CaptionTrack;
   segments: CaptionSegment[];
@@ -19,7 +20,7 @@ export function createRuntimeTranslatorClient(): TranslatorClient {
     translateSubtitle(input: TranslateSubtitleInput): Promise<TranslateSubtitleResult> {
       return chrome.runtime.sendMessage({
         type: 'TRANSLATE_SUBTITLE_AI_PROVIDER',
-        providerId: input.providerId,
+        providerType: input.providerType,
         videoId: input.videoId,
         trackId: input.track.trackId,
         targetLanguage: input.targetLanguage,
@@ -34,7 +35,7 @@ export function createRuntimeTranslatorClient(): TranslatorClient {
     translateAsrSubtitle(input: TranslateSubtitleInput): Promise<TranslateAsrSubtitleResult> {
       return chrome.runtime.sendMessage({
         type: 'TRANSLATE_ASR_SUBTITLE_BATCH',
-        providerId: input.providerId,
+        providerType: input.providerType,
         videoId: input.videoId,
         trackId: input.track.trackId,
         targetLanguage: input.targetLanguage,

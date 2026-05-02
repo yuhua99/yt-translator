@@ -1,5 +1,5 @@
 export interface SubtitleCacheKeyInput {
-  providerId: string;
+  providerType: string;
   model: string;
   videoId: string;
   trackId: string;
@@ -12,7 +12,7 @@ export interface SubtitleCacheKeyInput {
 export function createSubtitleCacheKey(input: SubtitleCacheKeyInput): string {
   return [
     'subtitle',
-    input.providerId,
+    input.providerType,
     input.model,
     input.videoId,
     input.trackId,

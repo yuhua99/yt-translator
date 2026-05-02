@@ -80,14 +80,12 @@ Open popup and configure:
 
 - **Enable translation**: on/off
 - **Target language**: e.g. `Traditional Chinese`
-- **Provider ID**: provider config key, e.g. `opencode-go`
-- **Provider type**:
+- **Provider**:
   - `mock`
   - `openai`
   - `anthropic`
   - `opencode-go`
 - **Model**: provider model name
-- **Base URL**: optional override
 - **API key**: stored in `chrome.storage.local`
 
 Provider configs are stored in `chrome.storage.sync`.
@@ -96,10 +94,8 @@ Provider secrets are stored in `chrome.storage.local`.
 ### opencode Go example
 
 ```txt
-Provider ID: opencode-go
-Provider type: opencode-go
+Provider: opencode-go
 Model: go
-Base URL: leave empty
 API key: your key
 ```
 
@@ -112,10 +108,8 @@ https://opencode.ai/zen/go/v1
 ### OpenAI example
 
 ```txt
-Provider ID: openai-main
-Provider type: openai
+Provider: openai
 Model: gpt-4.1-mini
-Base URL: leave empty
 API key: your OpenAI API key
 ```
 
@@ -128,10 +122,8 @@ https://api.openai.com/v1
 ### Anthropic example
 
 ```txt
-Provider ID: claude-main
-Provider type: anthropic
+Provider: anthropic
 Model: claude-sonnet-4-5
-Base URL: leave empty
 API key: your Anthropic API key
 ```
 
@@ -171,7 +163,7 @@ YouTube player request
 Provider flow:
 
 ```txt
-providerId
+providerType
   -> config from chrome.storage.sync
   -> secret from chrome.storage.local
   -> createProvider(config, secret)
@@ -232,7 +224,7 @@ Current tests cover:
 
 - API keys are stored only in `chrome.storage.local`.
 - Provider configs are stored in `chrome.storage.sync`.
-- Content script sends only `providerId`; provider secrets stay in background.
+- Content script sends only provider type/model request data; provider secrets stay in background.
 
 ## License
 

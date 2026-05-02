@@ -108,7 +108,7 @@ export class YoutubeSubtitleSession {
     }
 
     const result = await this.translatorClient.translateSubtitle({
-      providerId: this.settings.providerId,
+      providerType: this.settings.providerType,
       videoId: this.videoId,
       track: this.track,
       segments,
@@ -141,7 +141,7 @@ export class YoutubeSubtitleSession {
     }
 
     const result = await this.translatorClient.translateAsrSubtitle({
-      providerId: this.settings.providerId,
+      providerType: this.settings.providerType,
       videoId: this.videoId,
       track: this.track,
       segments,

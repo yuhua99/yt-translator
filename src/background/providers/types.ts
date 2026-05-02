@@ -4,10 +4,8 @@ import type { ProviderUsage } from '../../shared/messages';
 export type ProviderType = 'mock' | 'openai' | 'anthropic' | 'opencode-go';
 
 export interface ProviderConfig {
-  id: string;
   type: ProviderType;
   model: string;
-  baseUrl?: string;
 }
 
 export interface ProviderSecret {

@@ -1,16 +1,16 @@
-import type { ProviderConfig, ProviderSecret } from '../background/providers/types';
+import type { ProviderConfig, ProviderSecret, ProviderType } from '../background/providers/types';
 import type { AsrCueItem, ManualTranslationItem } from '../youtube/translation-validation';
 
 export interface ExtensionSettings {
   enabled: boolean;
   targetLanguage: string;
-  providerId: string;
+  providerType: ProviderType;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   enabled: false,
   targetLanguage: 'Traditional Chinese',
-  providerId: 'mock',
+  providerType: 'mock',
 };
 
 export interface ProviderUsage {
@@ -20,7 +20,7 @@ export interface ProviderUsage {
 
 export interface TranslateSubtitleMessage {
   type: 'TRANSLATE_SUBTITLE_AI_PROVIDER';
-  providerId: string;
+  providerType: ProviderType;
   videoId: string;
   trackId: string;
   items: Array<{
@@ -40,7 +40,7 @@ export interface TranslateSubtitleResult {
 
 export interface TranslateAsrSubtitleMessage {
   type: 'TRANSLATE_ASR_SUBTITLE_BATCH';
-  providerId: string;
+  providerType: ProviderType;
   videoId: string;
   trackId: string;
   segments: Array<{
@@ -61,9 +61,9 @@ export type ExtensionMessage =
   | { type: 'GET_SETTINGS' }
   | { type: 'SET_SETTINGS'; settings: ExtensionSettings }
   | { type: 'PING' }
-  | { type: 'GET_PROVIDER_CONFIG'; providerId: string }
+  | { type: 'GET_PROVIDER_CONFIG'; providerType: ProviderType }
   | { type: 'SET_PROVIDER_CONFIG'; config: ProviderConfig }
-  | { type: 'SET_PROVIDER_SECRET'; providerId: string; secret: ProviderSecret }
+  | { type: 'SET_PROVIDER_SECRET'; providerType: ProviderType; secret: ProviderSecret }
   | TranslateSubtitleMessage
   | TranslateAsrSubtitleMessage;
 

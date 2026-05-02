@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
       }
 
       if (message.type === 'GET_PROVIDER_CONFIG') {
-        sendResponse({ ok: true, config: await getProviderConfig(chrome.storage.sync, message.providerId) } satisfies ExtensionResponse);
+        sendResponse({ ok: true, config: await getProviderConfig(chrome.storage.sync, message.providerType) } satisfies ExtensionResponse);
         return;
       }
 
@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
       }
 
       if (message.type === 'SET_PROVIDER_SECRET') {
-        await setProviderSecret(chrome.storage.local, message.providerId, message.secret);
+        await setProviderSecret(chrome.storage.local, message.providerType, message.secret);
         sendResponse({ ok: true, message: 'provider secret saved' } satisfies ExtensionResponse);
         return;
       }

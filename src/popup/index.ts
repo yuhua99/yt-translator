@@ -13,10 +13,8 @@ function requiredElement<T extends Element>(selector: string): T {
 
 const enabledInput = requiredElement<HTMLInputElement>('#enabled');
 const targetLanguageInput = requiredElement<HTMLInputElement>('#target-language');
-const providerIdInput = requiredElement<HTMLInputElement>('#provider-id');
 const providerTypeInput = requiredElement<HTMLSelectElement>('#provider-type');
 const providerModelInput = requiredElement<HTMLInputElement>('#provider-model');
-const providerBaseUrlInput = requiredElement<HTMLInputElement>('#provider-base-url');
 const providerApiKeyInput = requiredElement<HTMLInputElement>('#provider-api-key');
 const saveButton = requiredElement<HTMLButtonElement>('#save');
 const status = requiredElement<HTMLParagraphElement>('#status');
@@ -28,7 +26,7 @@ function sendMessage<TResponse extends ExtensionResponse>(message: ExtensionMess
 function renderSettings(settings: ExtensionSettings): void {
   enabledInput.checked = settings.enabled;
   targetLanguageInput.value = settings.targetLanguage;
-  providerIdInput.value = settings.providerId;
+  providerTypeInput.value = settings.providerType;
 }
 
 function renderProviderConfig(response: ProviderConfigResponse): void {
@@ -38,7 +36,6 @@ function renderProviderConfig(response: ProviderConfigResponse): void {
 
   providerTypeInput.value = response.config.type;
   providerModelInput.value = response.config.model;
-  providerBaseUrlInput.value = response.config.baseUrl ?? '';
 }
 
 async function loadSettings(): Promise<void> {
@@ -46,7 +43,7 @@ async function loadSettings(): Promise<void> {
 
   if (response.ok) {
     renderSettings(response.settings);
-    renderProviderConfig(await sendMessage<ProviderConfigResponse>({ type: 'GET_PROVIDER_CONFIG', providerId: response.settings.providerId }));
+    renderProviderConfig(await sendMessage<ProviderConfigResponse>({ type: 'GET_PROVIDER_CONFIG', providerType: response.settings.providerType }));
     return;
   }
 
@@ -55,12 +52,12 @@ async function loadSettings(): Promise<void> {
 }
 
 async function saveSettings(): Promise<void> {
+  const providerType = providerTypeInput.value as ProviderType;
   const settings: ExtensionSettings = {
     enabled: enabledInput.checked,
     targetLanguage: targetLanguageInput.value.trim() || DEFAULT_SETTINGS.targetLanguage,
-    providerId: providerIdInput.value.trim() || DEFAULT_SETTINGS.providerId,
+    providerType,
   };
-  const providerId = settings.providerId;
 
   const settingsResponse = await sendMessage({ type: 'SET_SETTINGS', settings });
   if (!settingsResponse.ok) {
@@ -71,10 +68,8 @@ async function saveSettings(): Promise<void> {
   const configResponse = await sendMessage({
     type: 'SET_PROVIDER_CONFIG',
     config: {
-      id: providerId,
-      type: providerTypeInput.value as ProviderType,
-      model: providerModelInput.value.trim() || providerTypeInput.value,
-      baseUrl: providerBaseUrlInput.value.trim() || undefined,
+      type: providerType,
+      model: providerModelInput.value.trim() || providerType,
     },
   });
   if (!configResponse.ok) {
@@ -84,7 +79,7 @@ async function saveSettings(): Promise<void> {
 
   const apiKey = providerApiKeyInput.value.trim();
   if (apiKey) {
-    const secretResponse = await sendMessage({ type: 'SET_PROVIDER_SECRET', providerId, secret: { apiKey } });
+    const secretResponse = await sendMessage({ type: 'SET_PROVIDER_SECRET', providerType, secret: { apiKey } });
     if (!secretResponse.ok) {
       status.textContent = secretResponse.error;
       return;

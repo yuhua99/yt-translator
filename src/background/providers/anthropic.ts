@@ -32,10 +32,10 @@ export class AnthropicProvider implements AiProvider {
     const apiKey = this.secret.apiKey;
 
     if (!apiKey) {
-      throw new Error(`Missing API key for provider: ${this.config.id}`);
+      throw new Error(`Missing API key for provider: ${this.config.type}`);
     }
 
-    const response = await fetch(`${this.config.baseUrl ?? 'https://api.anthropic.com/v1'}/messages`, {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'anthropic-version': '2023-06-01',

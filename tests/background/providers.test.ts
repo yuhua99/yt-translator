@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { AnthropicProvider } from '../../src/background/providers/anthropic';
+import { createProvider } from '../../src/background/providers/factory';
 import { parseJsonObject } from '../../src/background/providers/json';
 import { OpenAiProvider } from '../../src/background/providers/openai';
 import { OPENCODE_GO_BASE_URL, OpencodeGoProvider } from '../../src/background/providers/opencode-go';
-import { createProvider } from '../../src/background/providers/factory';
 import { getProviderConfig, getProviderSecret, setProviderConfig, setProviderSecret, type ProviderStorageArea } from '../../src/background/providers/storage';
 
 const originalFetch = globalThis.fetch;
@@ -35,16 +35,20 @@ describe('parseJsonObject', () => {
 });
 
 describe('provider storage', () => {
-  test('stores config in sync storage and secret separately', async () => {
+  test('stores config in sync storage and secret separately by provider type', async () => {
     const sync = createMemoryStorage();
     const local = createMemoryStorage();
 
-    await setProviderConfig(sync, { id: 'openai-main', type: 'openai', model: 'gpt-4.1-mini' });
-    await setProviderSecret(local, 'openai-main', { apiKey: 'secret-key' });
+    await setProviderConfig(sync, { type: 'openai', model: 'gpt-4.1-mini' });
+    await setProviderSecret(local, 'openai', { apiKey: 'secret-key' });
 
-    await expect(getProviderConfig(sync, 'openai-main')).resolves.toEqual({ id: 'openai-main', type: 'openai', model: 'gpt-4.1-mini' });
-    await expect(getProviderSecret(local, 'openai-main')).resolves.toEqual({ apiKey: 'secret-key' });
+    await expect(getProviderConfig(sync, 'openai')).resolves.toEqual({ type: 'openai', model: 'gpt-4.1-mini' });
+    await expect(getProviderSecret(local, 'openai')).resolves.toEqual({ apiKey: 'secret-key' });
     expect(JSON.stringify(sync.data)).not.toContain('secret-key');
+  });
+
+  test('returns default config when provider type has no saved config', async () => {
+    await expect(getProviderConfig(createMemoryStorage(), 'opencode-go')).resolves.toEqual({ type: 'opencode-go', model: 'go' });
   });
 });
 
@@ -59,7 +63,7 @@ describe('OpenAiProvider', () => {
       });
     };
 
-    const provider = new OpenAiProvider({ id: 'openai-main', type: 'openai', model: 'gpt-4.1-mini' }, { apiKey: 'key' });
+    const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-4.1-mini' }, { apiKey: 'key' });
     const result = await provider.translateManual({ targetLanguage: 'Traditional Chinese', items: [{ id: 'a', text: 'Hello', startMs: 0 }] });
 
     expect(request?.url).toBe('https://api.openai.com/v1/chat/completions');
@@ -76,11 +80,11 @@ describe('OpencodeGoProvider', () => {
       return Response.json({ choices: [{ message: { content: '{"translations":[{"id":"a","text":"你好"}]}' } }] });
     };
 
-    const provider = new OpencodeGoProvider({ id: 'go-main', type: 'opencode-go', model: 'go' }, { apiKey: 'key' });
+    const provider = new OpencodeGoProvider({ type: 'opencode-go', model: 'go' }, { apiKey: 'key' });
     await provider.translateManual({ targetLanguage: 'Traditional Chinese', items: [{ id: 'a', text: 'Hello', startMs: 0 }] });
 
     expect(request?.url).toBe(`${OPENCODE_GO_BASE_URL}/chat/completions`);
-    expect(createProvider({ id: 'go-main', type: 'opencode-go', model: 'go' }, { apiKey: 'key' })).toBeInstanceOf(OpencodeGoProvider);
+    expect(createProvider({ type: 'opencode-go', model: 'go' }, { apiKey: 'key' })).toBeInstanceOf(OpencodeGoProvider);
   });
 });
 
@@ -95,7 +99,7 @@ describe('AnthropicProvider', () => {
       });
     };
 
-    const provider = new AnthropicProvider({ id: 'claude-main', type: 'anthropic', model: 'claude-sonnet-4-5' }, { apiKey: 'key' });
+    const provider = new AnthropicProvider({ type: 'anthropic', model: 'claude-sonnet-4-5' }, { apiKey: 'key' });
     const result = await provider.translateAsr({ targetLanguage: 'Traditional Chinese', segments: [{ id: 's1', text: 'Hello', startMs: 0 }] });
 
     expect(request?.url).toBe('https://api.anthropic.com/v1/messages');

@@ -6,7 +6,7 @@ import type { ExtensionSettings, TranslateSubtitleResult } from '../../src/share
 const settings: ExtensionSettings = {
   enabled: true,
   targetLanguage: 'Traditional Chinese',
-  providerId: 'mock',
+  providerType: 'mock',
 };
 
 function createTranslatorClient(): TranslatorClient & { calls: string[][] } {

@@ -1,10 +1,11 @@
 import { createProvider } from './factory';
 import { getProviderConfig, getProviderSecret, type ProviderStores } from './storage';
 import { validateAsrCues, validateManualTranslations } from '../../youtube/translation-validation';
+import type { ProviderType } from './types';
 import type { TranslateAsrSubtitleMessage, TranslateAsrSubtitleResult, TranslateSubtitleMessage, TranslateSubtitleResult } from '../../shared/messages';
 
 export async function translateSubtitleMessage(message: TranslateSubtitleMessage, stores: ProviderStores): Promise<TranslateSubtitleResult> {
-  const provider = await resolveProvider(message.providerId, stores);
+  const provider = await resolveProvider(message.providerType, stores);
   const result = await provider.translateManual({
     items: message.items,
     targetLanguage: message.targetLanguage,
@@ -19,7 +20,7 @@ export async function translateSubtitleMessage(message: TranslateSubtitleMessage
 }
 
 export async function translateAsrSubtitleMessage(message: TranslateAsrSubtitleMessage, stores: ProviderStores): Promise<TranslateAsrSubtitleResult> {
-  const provider = await resolveProvider(message.providerId, stores);
+  const provider = await resolveProvider(message.providerType, stores);
   const result = await provider.translateAsr({
     segments: message.segments,
     targetLanguage: message.targetLanguage,
@@ -33,8 +34,8 @@ export async function translateAsrSubtitleMessage(message: TranslateAsrSubtitleM
   };
 }
 
-async function resolveProvider(providerId: string, stores: ProviderStores) {
-  const config = await getProviderConfig(stores.sync, providerId);
-  const secret = await getProviderSecret(stores.local, providerId);
+async function resolveProvider(providerType: ProviderType, stores: ProviderStores) {
+  const config = await getProviderConfig(stores.sync, providerType);
+  const secret = await getProviderSecret(stores.local, providerType);
   return createProvider(config, secret);
 }

@@ -24,7 +24,7 @@ describe('translateSubtitleMessage', () => {
   test('returns provider-agnostic manual translations by id', async () => {
     await expect(translateSubtitleMessage({
       type: 'TRANSLATE_SUBTITLE_AI_PROVIDER',
-      providerId: 'mock',
+      providerType: 'mock',
       videoId: 'video-1',
       trackId: 'en::manual',
       targetLanguage: 'Traditional Chinese',
@@ -42,23 +42,13 @@ describe('translateSubtitleMessage', () => {
     });
   });
 
-  test('rejects unknown provider', async () => {
-    await expect(translateSubtitleMessage({
-      type: 'TRANSLATE_SUBTITLE_AI_PROVIDER',
-      providerId: 'unknown',
-      videoId: 'video-1',
-      trackId: 'en::manual',
-      targetLanguage: 'Traditional Chinese',
-      items: [],
-    }, stores)).rejects.toThrow('Provider config not found: unknown');
-  });
 });
 
 describe('translateAsrSubtitleMessage', () => {
   test('returns timestamped ASR cues', async () => {
     await expect(translateAsrSubtitleMessage({
       type: 'TRANSLATE_ASR_SUBTITLE_BATCH',
-      providerId: 'mock',
+      providerType: 'mock',
       videoId: 'video-1',
       trackId: 'en::asr',
       targetLanguage: 'Traditional Chinese',

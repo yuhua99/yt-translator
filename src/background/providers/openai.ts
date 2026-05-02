@@ -33,10 +33,10 @@ export class OpenAiProvider implements AiProvider {
     const apiKey = this.secret.apiKey;
 
     if (!apiKey) {
-      throw new Error(`Missing API key for provider: ${this.config.id}`);
+      throw new Error(`Missing API key for provider: ${this.config.type}`);
     }
 
-    const response = await fetch(`${this.config.baseUrl ?? this.defaultBaseUrl}/chat/completions`, {
+    const response = await fetch(`${this.defaultBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'authorization': `Bearer ${apiKey}`,

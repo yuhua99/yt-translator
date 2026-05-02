@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { createSubtitleCacheKey, type SubtitleCacheKeyInput } from '../../src/youtube/cache-key';
 
 const base: SubtitleCacheKeyInput = {
-  providerId: 'openai',
+  providerType: 'openai',
   model: 'gpt-4.1-mini',
   videoId: 'video-1',
   trackId: 'en::manual',
@@ -23,7 +23,7 @@ describe('createSubtitleCacheKey', () => {
   test('includes provider, model, language, and prompt version', () => {
     const keys = new Set([
       createSubtitleCacheKey(base),
-      createSubtitleCacheKey({ ...base, providerId: 'anthropic' }),
+      createSubtitleCacheKey({ ...base, providerType: 'anthropic' }),
       createSubtitleCacheKey({ ...base, model: 'claude-sonnet-4' }),
       createSubtitleCacheKey({ ...base, targetLanguage: 'ja' }),
       createSubtitleCacheKey({ ...base, promptVersion: 'v2' }),

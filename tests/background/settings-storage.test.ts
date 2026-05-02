@@ -29,7 +29,7 @@ describe('settings storage', () => {
 
   test('persists full settings object', async () => {
     const storage = createMemoryStorage();
-    const settings: ExtensionSettings = { enabled: true, targetLanguage: 'Japanese', providerId: 'mock' };
+    const settings: ExtensionSettings = { enabled: true, targetLanguage: 'Japanese', providerType: 'mock' };
 
     await setSettings(storage, settings);
 

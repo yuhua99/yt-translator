@@ -4,7 +4,7 @@
 
 Build browser extension feature for YouTube subtitle translation only.
 
-Feature code must be provider-agnostic. It only sends `providerId` to background.
+Feature code must be provider-agnostic. It only sends provider type to background.
 
 ---
 
@@ -14,7 +14,7 @@ User can:
 
 - Enable/disable subtitle translation on YouTube
 - Pick target language/style via settings
-- Pick AI provider by `providerId`
+- Pick AI provider by provider type
 - See translated subtitles while video plays
 - Pause translation when YouTube CC is off
 - Resume translation when CC is on
@@ -295,7 +295,7 @@ ASR translation request:
 
 ```ts
 interface AsrTranslateRequest {
-  providerId: string;
+  providerType: string;
   videoId: string;
   segments: Array<{
     id: string;
@@ -351,7 +351,7 @@ Manual subtitles:
 ```ts
 interface TranslateSubtitleMessage {
   type: 'TRANSLATE_SUBTITLE_AI_PROVIDER';
-  providerId: string;
+  providerType: string;
   videoId: string;
   trackId: string;
   items: Array<{
@@ -382,7 +382,7 @@ ASR subtitles:
 ```ts
 interface TranslateAsrSubtitleMessage {
   type: 'TRANSLATE_ASR_SUBTITLE_BATCH';
-  providerId: string;
+  providerType: string;
   videoId: string;
   trackId: string;
   segments: Array<{
@@ -412,7 +412,7 @@ interface TranslateAsrSubtitleResult {
 Background resolves provider:
 
 ```txt
-providerId
+providerType
   -> provider config from storage.sync
   -> provider secret from storage.local
   -> createProvider(config, secret)
@@ -474,7 +474,7 @@ Suggested key material:
 
 ```ts
 interface SubtitleCacheKey {
-  providerId: string;
+  providerType: string;
   model: string;
   videoId: string;
   trackId: string;
@@ -531,7 +531,7 @@ interface DebugSnapshot {
   currentTimeMs: number;
   translatedUpToMs: number;
   lastApiMs?: number;
-  providerId: string;
+  providerType: string;
 }
 ```
 
