@@ -9,7 +9,13 @@ export const SETTINGS_KEY = 'settings';
 
 export async function getSettings(storage: SettingsStorageArea): Promise<ExtensionSettings> {
   const stored = await storage.get(SETTINGS_KEY);
-  return { ...DEFAULT_SETTINGS, ...(stored[SETTINGS_KEY] as Partial<ExtensionSettings> | undefined) };
+  const settings = { ...DEFAULT_SETTINGS, ...(stored[SETTINGS_KEY] as Partial<ExtensionSettings> | undefined) };
+
+  if (settings.providerType === 'mock') {
+    return { ...settings, providerType: DEFAULT_SETTINGS.providerType };
+  }
+
+  return settings;
 }
 
 export async function setSettings(storage: SettingsStorageArea, settings: ExtensionSettings): Promise<void> {

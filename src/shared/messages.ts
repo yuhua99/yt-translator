@@ -10,7 +10,7 @@ export interface ExtensionSettings {
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   enabled: false,
   targetLanguage: 'Traditional Chinese',
-  providerType: 'mock',
+  providerType: 'opencode-go',
 };
 
 export interface ProviderUsage {

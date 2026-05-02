@@ -13,10 +13,10 @@ Implemented:
 - ASR subtitle parsing and overlay rendering
 - Provider-agnostic background translation pipeline
 - Providers:
-  - Mock
   - OpenAI-compatible
   - Anthropic
   - opencode Go (`https://opencode.ai/zen/go/v1`)
+  - Mock provider for tests
 - Settings popup for target language, provider, model, base URL, API key
 
 Known gaps:
@@ -81,7 +81,6 @@ Open popup and configure:
 - **Enable translation**: on/off
 - **Target language**: e.g. `Traditional Chinese`
 - **Provider**:
-  - `mock`
   - `openai`
   - `anthropic`
   - `opencode-go`

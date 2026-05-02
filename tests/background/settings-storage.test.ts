@@ -27,9 +27,15 @@ describe('settings storage', () => {
     await expect(getSettings(storage)).resolves.toEqual({ ...DEFAULT_SETTINGS, enabled: true });
   });
 
+  test('migrates old mock setting to default user provider', async () => {
+    const storage = createMemoryStorage({ settings: { providerType: 'mock' } });
+
+    await expect(getSettings(storage)).resolves.toEqual(DEFAULT_SETTINGS);
+  });
+
   test('persists full settings object', async () => {
     const storage = createMemoryStorage();
-    const settings: ExtensionSettings = { enabled: true, targetLanguage: 'Japanese', providerType: 'mock' };
+    const settings: ExtensionSettings = { enabled: true, targetLanguage: 'Japanese', providerType: 'opencode-go' };
 
     await setSettings(storage, settings);
 
