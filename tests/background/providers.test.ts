@@ -66,7 +66,7 @@ describe('OpenAiProvider', () => {
     const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-4.1-mini' }, { apiKey: 'key' });
 
     await expect(provider.testConnection()).resolves.toEqual({ ok: true, text: 'OK', usage: { inputTokens: 4, outputTokens: 1 } });
-    expect(requestBody?.max_tokens).toBe(8);
+    expect(requestBody?.max_tokens).toBe(40);
     expect(requestBody).not.toHaveProperty('response_format');
   });
 
@@ -127,7 +127,7 @@ describe('AnthropicProvider', () => {
     const provider = new AnthropicProvider({ type: 'anthropic', model: 'claude-sonnet-4-5' }, { apiKey: 'key' });
 
     await expect(provider.testConnection()).resolves.toEqual({ ok: true, text: 'OK', usage: { inputTokens: 4, outputTokens: 1 } });
-    expect(requestBody?.max_tokens).toBe(3);
+    expect(requestBody?.max_tokens).toBe(40);
   });
 
   test('sends messages request and parses ASR cues', async () => {
