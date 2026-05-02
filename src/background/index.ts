@@ -1,3 +1,4 @@
+import { translateAsrSubtitleMessage, translateSubtitleMessage } from './providers/subtitle-translation';
 import { getSettings, setSettings } from './settings-storage';
 import type { ExtensionMessage, ExtensionResponse } from '../shared/messages';
 
@@ -16,6 +17,16 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
       if (message.type === 'SET_SETTINGS') {
         await setSettings(chrome.storage.sync, message.settings);
         sendResponse({ ok: true, settings: message.settings } satisfies ExtensionResponse);
+        return;
+      }
+
+      if (message.type === 'TRANSLATE_SUBTITLE_AI_PROVIDER') {
+        sendResponse(await translateSubtitleMessage(message) satisfies ExtensionResponse);
+        return;
+      }
+
+      if (message.type === 'TRANSLATE_ASR_SUBTITLE_BATCH') {
+        sendResponse(await translateAsrSubtitleMessage(message) satisfies ExtensionResponse);
         return;
       }
 

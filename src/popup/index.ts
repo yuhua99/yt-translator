@@ -12,6 +12,7 @@ function requiredElement<T extends Element>(selector: string): T {
 
 const enabledInput = requiredElement<HTMLInputElement>('#enabled');
 const targetLanguageInput = requiredElement<HTMLInputElement>('#target-language');
+const providerIdInput = requiredElement<HTMLInputElement>('#provider-id');
 const saveButton = requiredElement<HTMLButtonElement>('#save');
 const status = requiredElement<HTMLParagraphElement>('#status');
 
@@ -22,6 +23,7 @@ function sendMessage<TResponse extends ExtensionResponse>(message: ExtensionMess
 function renderSettings(settings: ExtensionSettings): void {
   enabledInput.checked = settings.enabled;
   targetLanguageInput.value = settings.targetLanguage;
+  providerIdInput.value = settings.providerId;
 }
 
 async function loadSettings(): Promise<void> {
@@ -40,6 +42,7 @@ async function saveSettings(): Promise<void> {
   const settings: ExtensionSettings = {
     enabled: enabledInput.checked,
     targetLanguage: targetLanguageInput.value.trim() || DEFAULT_SETTINGS.targetLanguage,
+    providerId: providerIdInput.value.trim() || DEFAULT_SETTINGS.providerId,
   };
 
   const response = await sendMessage({ type: 'SET_SETTINGS', settings });
