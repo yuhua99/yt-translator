@@ -1,3 +1,4 @@
+import { testProviderConnection } from './providers/provider-test';
 import { getProviderConfig, setProviderConfig, setProviderSecret } from './providers/storage';
 import { translateAsrSubtitleMessage, translateSubtitleMessage } from './providers/subtitle-translation';
 import { getSettings, setSettings } from './settings-storage';
@@ -35,6 +36,11 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
       if (message.type === 'SET_PROVIDER_SECRET') {
         await setProviderSecret(chrome.storage.local, message.providerType, message.secret);
         sendResponse({ ok: true, message: 'provider secret saved' } satisfies ExtensionResponse);
+        return;
+      }
+
+      if (message.type === 'TEST_PROVIDER') {
+        sendResponse(await testProviderConnection(message.config, message.secret) satisfies ExtensionResponse);
         return;
       }
 

@@ -53,6 +53,23 @@ describe('provider storage', () => {
 });
 
 describe('OpenAiProvider', () => {
+  test('tests connection with tiny request', async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    globalThis.fetch = async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return Response.json({
+        choices: [{ message: { content: 'OK' } }],
+        usage: { prompt_tokens: 4, completion_tokens: 1 },
+      });
+    };
+
+    const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-4.1-mini' }, { apiKey: 'key' });
+
+    await expect(provider.testConnection()).resolves.toEqual({ ok: true, text: 'OK', usage: { inputTokens: 4, outputTokens: 1 } });
+    expect(requestBody?.max_tokens).toBe(3);
+    expect(requestBody).not.toHaveProperty('response_format');
+  });
+
   test('sends chat completion request and parses manual translations', async () => {
     let request: Request | undefined;
     globalThis.fetch = async (input, init) => {
@@ -89,6 +106,22 @@ describe('OpencodeGoProvider', () => {
 });
 
 describe('AnthropicProvider', () => {
+  test('tests connection with tiny request', async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    globalThis.fetch = async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return Response.json({
+        content: [{ type: 'text', text: 'OK' }],
+        usage: { input_tokens: 4, output_tokens: 1 },
+      });
+    };
+
+    const provider = new AnthropicProvider({ type: 'anthropic', model: 'claude-sonnet-4-5' }, { apiKey: 'key' });
+
+    await expect(provider.testConnection()).resolves.toEqual({ ok: true, text: 'OK', usage: { inputTokens: 4, outputTokens: 1 } });
+    expect(requestBody?.max_tokens).toBe(3);
+  });
+
   test('sends messages request and parses ASR cues', async () => {
     let request: Request | undefined;
     globalThis.fetch = async (input, init) => {

@@ -41,7 +41,14 @@ export interface AsrTranslateOutput {
   usage?: ProviderUsage;
 }
 
+export interface ProviderTestOutput {
+  ok: true;
+  text: string;
+  usage?: ProviderUsage;
+}
+
 export interface AiProvider {
   translateManual(input: ManualTranslateInput): Promise<ManualTranslateOutput>;
   translateAsr(input: AsrTranslateInput): Promise<AsrTranslateOutput>;
+  testConnection(): Promise<ProviderTestOutput>;
 }

@@ -1,6 +1,10 @@
 import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput } from './types';
 
 export class MockProvider implements AiProvider {
+  async testConnection() {
+    return { ok: true as const, text: 'OK' };
+  }
+
   async translateManual(input: ManualTranslateInput): Promise<ManualTranslateOutput> {
     return {
       translations: input.items.map((item) => ({

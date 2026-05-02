@@ -1,6 +1,6 @@
 import { parseJsonObject } from './json';
 import { createAsrPrompt, createManualPrompt } from './prompts';
-import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput, ProviderConfig, ProviderSecret } from './types';
+import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput, ProviderConfig, ProviderSecret, ProviderTestOutput } from './types';
 
 interface OpenAiResponse {
   choices?: Array<{ message?: { content?: string } }>;
@@ -29,7 +29,12 @@ export class OpenAiProvider implements AiProvider {
     return { ...parsed, usage: response.usage };
   }
 
-  private async complete(prompt: string): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
+  async testConnection(): Promise<ProviderTestOutput> {
+    const response = await this.complete('Reply with OK.', { maxTokens: 3, json: false, system: 'Reply with OK only.' });
+    return { ok: true, text: response.content.trim(), usage: response.usage };
+  }
+
+  private async complete(prompt: string, options: { maxTokens?: number; json?: boolean; system?: string } = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
     const apiKey = this.secret.apiKey;
 
     if (!apiKey) {
@@ -45,9 +50,10 @@ export class OpenAiProvider implements AiProvider {
       body: JSON.stringify({
         model: this.config.model,
         temperature: 0,
-        response_format: { type: 'json_object' },
+        ...(options.maxTokens ? { max_tokens: options.maxTokens } : {}),
+        ...(options.json === false ? {} : { response_format: { type: 'json_object' } }),
         messages: [
-          { role: 'system', content: 'You are a subtitle translation engine. Return valid JSON only.' },
+          { role: 'system', content: options.system ?? 'You are a subtitle translation engine. Return valid JSON only.' },
           { role: 'user', content: prompt },
         ],
       }),

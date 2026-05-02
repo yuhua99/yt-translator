@@ -1,6 +1,6 @@
 import { parseJsonObject } from './json';
 import { createAsrPrompt, createManualPrompt } from './prompts';
-import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput, ProviderConfig, ProviderSecret } from './types';
+import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput, ProviderConfig, ProviderSecret, ProviderTestOutput } from './types';
 
 interface AnthropicResponse {
   content?: Array<{ type: string; text?: string }>;
@@ -28,7 +28,12 @@ export class AnthropicProvider implements AiProvider {
     return { ...parsed, usage: response.usage };
   }
 
-  private async complete(prompt: string): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
+  async testConnection(): Promise<ProviderTestOutput> {
+    const response = await this.complete('Reply with OK.', { maxTokens: 3, system: 'Reply with OK only.' });
+    return { ok: true, text: response.content.trim(), usage: response.usage };
+  }
+
+  private async complete(prompt: string, options: { maxTokens?: number; system?: string } = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
     const apiKey = this.secret.apiKey;
 
     if (!apiKey) {
@@ -44,9 +49,9 @@ export class AnthropicProvider implements AiProvider {
       },
       body: JSON.stringify({
         model: this.config.model,
-        max_tokens: 4096,
+        max_tokens: options.maxTokens ?? 4096,
         temperature: 0,
-        system: 'You are a subtitle translation engine. Return valid JSON only.',
+        system: options.system ?? 'You are a subtitle translation engine. Return valid JSON only.',
         messages: [{ role: 'user', content: prompt }],
       }),
     });
