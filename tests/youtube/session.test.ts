@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import { YoutubeSubtitleSession } from '../../src/youtube/session';
+import type { TranslationProgressHud } from '../../src/youtube/progress-hud';
 import type { TranslatorClient } from '../../src/youtube/translator-client';
 import type { ExtensionSettings, TranslateSubtitleResult } from '../../src/shared/messages';
 
@@ -8,6 +9,32 @@ const settings: ExtensionSettings = {
   targetLanguage: 'Traditional Chinese',
   providerType: 'mock',
 };
+
+function createProgressHud(): TranslationProgressHud & { events: string[] } {
+  const events: string[] = [];
+
+  return {
+    events,
+    start(input) {
+      events.push(`start:${input.total}`);
+    },
+    update(input) {
+      events.push(`update:${input.completed}/${input.total}`);
+    },
+    success(input) {
+      events.push(`success:${input.message ?? ''}`);
+    },
+    error(input) {
+      events.push(`error:${input.message}`);
+    },
+    clear(id) {
+      events.push(`clear:${id}`);
+    },
+    clearAll() {
+      events.push('clearAll');
+    },
+  };
+}
 
 function createTranslatorClient(): TranslatorClient & { calls: string[][] } {
   const calls: string[][] = [];
@@ -103,6 +130,45 @@ describe('YoutubeSubtitleSession', () => {
         sourceSegmentIds: ['video-1:en::asr:0'],
       },
     ]);
+  });
+
+  test('reports translation progress', async () => {
+    const client = createTranslatorClient();
+    const progressHud = createProgressHud();
+    const session = new YoutubeSubtitleSession(settings, client, progressHud);
+
+    session.handleCapturedCaptions({
+      url: 'https://www.youtube.com/api/timedtext?v=video-1&lang=en',
+      responseText: JSON.stringify({ events: [{ tStartMs: 1000, segs: [{ utf8: 'Hello' }] }] }),
+    });
+
+    await session.ensureTranslations(1000, true);
+
+    expect(progressHud.events).toContain('start:1');
+    expect(progressHud.events).toContain('update:0/1');
+    expect(progressHud.events).toContain('success:完成 1/1');
+  });
+
+  test('reports translation errors without throwing', async () => {
+    const warn = spyOn(console, 'warn').mockImplementation(() => {});
+    const progressHud = createProgressHud();
+    const session = new YoutubeSubtitleSession(settings, {
+      async translateSubtitle() {
+        throw new Error('bad api key');
+      },
+      async translateAsrSubtitle() {
+        throw new Error('bad api key');
+      },
+    }, progressHud);
+
+    session.handleCapturedCaptions({
+      url: 'https://www.youtube.com/api/timedtext?v=video-1&lang=en',
+      responseText: JSON.stringify({ events: [{ tStartMs: 1000, segs: [{ utf8: 'Hello' }] }] }),
+    });
+
+    await expect(session.ensureTranslations(1000, true)).resolves.toBeUndefined();
+    expect(progressHud.events).toContain('error:bad api key');
+    warn.mockRestore();
   });
 
   test('resetForNavigation clears state and aborts in-flight windows', () => {

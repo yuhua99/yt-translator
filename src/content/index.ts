@@ -1,6 +1,7 @@
 import { AsrOverlayRenderer } from '../youtube/asr-overlay-renderer';
 import { CAPTION_EVENT, type CaptionsCapturedEventDetail } from '../youtube/caption-capture-event';
 import { ManualSubtitleRenderer } from '../youtube/manual-renderer';
+import { createTranslationProgressHud, type TranslationProgressHud } from '../youtube/progress-hud';
 import { YoutubeSubtitleSession } from '../youtube/session';
 import { createRuntimeTranslatorClient } from '../youtube/translator-client';
 import type { ExtensionMessage, ExtensionSettings, SettingsResponse } from '../shared/messages';
@@ -8,6 +9,7 @@ import type { ExtensionMessage, ExtensionSettings, SettingsResponse } from '../s
 let session: YoutubeSubtitleSession | undefined;
 let asrOverlayRenderer: AsrOverlayRenderer | undefined;
 let manualRenderer: ManualSubtitleRenderer | undefined;
+let progressHud: TranslationProgressHud | undefined;
 
 function sendMessage(message: ExtensionMessage): Promise<SettingsResponse> {
   return chrome.runtime.sendMessage(message);
@@ -72,7 +74,9 @@ function createSession(settings: ExtensionSettings): void {
   session?.stop();
   asrOverlayRenderer?.clear();
   manualRenderer?.clear();
-  session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient());
+  progressHud?.clearAll();
+  progressHud = createTranslationProgressHud();
+  session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient(), progressHud);
   asrOverlayRenderer = new AsrOverlayRenderer();
   manualRenderer = new ManualSubtitleRenderer();
   session.start();
