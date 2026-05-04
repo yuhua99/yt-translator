@@ -1,4 +1,4 @@
-import type { ProviderConfig, ProviderSecret, ProviderType } from './types';
+import type { ProviderConfig, ProviderSecret, ProviderType } from "./types";
 
 export interface ProviderStorageArea {
   get(key: string): Promise<Record<string, unknown>>;
@@ -10,42 +10,73 @@ export interface ProviderStores {
   local: ProviderStorageArea;
 }
 
-export const PROVIDER_CONFIGS_KEY = 'providerConfigs';
-export const PROVIDER_SECRETS_KEY = 'providerSecrets';
+export const PROVIDER_CONFIGS_KEY = "providerConfigs";
+export const PROVIDER_SECRETS_KEY = "providerSecrets";
 
 const DEFAULT_PROVIDER_CONFIGS: Record<ProviderType, ProviderConfig> = {
-  openai: { type: 'openai', model: 'gpt-4.1-mini' },
-  anthropic: { type: 'anthropic', model: 'claude-sonnet-4-5' },
-  opencodeZen: { type: 'opencodeZen', model: 'qwen3.6-plus' },
+  openai: { type: "openai", model: "gpt-5.4-mini" },
+  anthropic: { type: "anthropic", model: "claude-haiku-4-5" },
+  opencodeZen: { type: "opencodeZen", model: "deepseek-v4-flash" },
 };
 
-export function getDefaultProviderConfig(providerType: ProviderType): ProviderConfig {
+export function getDefaultProviderConfig(
+  providerType: ProviderType,
+): ProviderConfig {
   return DEFAULT_PROVIDER_CONFIGS[providerType];
 }
 
-export async function getProviderConfig(storage: ProviderStorageArea, providerType: ProviderType): Promise<ProviderConfig> {
+export async function getProviderConfig(
+  storage: ProviderStorageArea,
+  providerType: ProviderType,
+): Promise<ProviderConfig> {
   const configs = await getProviderConfigs(storage);
   return configs[providerType] ?? getDefaultProviderConfig(providerType);
 }
 
-export async function getProviderSecret(storage: ProviderStorageArea, providerType: ProviderType): Promise<ProviderSecret> {
+export async function getProviderSecret(
+  storage: ProviderStorageArea,
+  providerType: ProviderType,
+): Promise<ProviderSecret> {
   const stored = await storage.get(PROVIDER_SECRETS_KEY);
-  const secrets = (stored[PROVIDER_SECRETS_KEY] as Partial<Record<ProviderType, ProviderSecret>> | undefined) ?? {};
+  const secrets =
+    (stored[PROVIDER_SECRETS_KEY] as
+      | Partial<Record<ProviderType, ProviderSecret>>
+      | undefined) ?? {};
   return secrets[providerType] ?? {};
 }
 
-export async function setProviderConfig(storage: ProviderStorageArea, config: ProviderConfig): Promise<void> {
+export async function setProviderConfig(
+  storage: ProviderStorageArea,
+  config: ProviderConfig,
+): Promise<void> {
   const configs = await getProviderConfigs(storage);
-  await storage.set({ [PROVIDER_CONFIGS_KEY]: { ...configs, [config.type]: config } });
+  await storage.set({
+    [PROVIDER_CONFIGS_KEY]: { ...configs, [config.type]: config },
+  });
 }
 
-export async function setProviderSecret(storage: ProviderStorageArea, providerType: ProviderType, secret: ProviderSecret): Promise<void> {
+export async function setProviderSecret(
+  storage: ProviderStorageArea,
+  providerType: ProviderType,
+  secret: ProviderSecret,
+): Promise<void> {
   const stored = await storage.get(PROVIDER_SECRETS_KEY);
-  const secrets = (stored[PROVIDER_SECRETS_KEY] as Partial<Record<ProviderType, ProviderSecret>> | undefined) ?? {};
-  await storage.set({ [PROVIDER_SECRETS_KEY]: { ...secrets, [providerType]: secret } });
+  const secrets =
+    (stored[PROVIDER_SECRETS_KEY] as
+      | Partial<Record<ProviderType, ProviderSecret>>
+      | undefined) ?? {};
+  await storage.set({
+    [PROVIDER_SECRETS_KEY]: { ...secrets, [providerType]: secret },
+  });
 }
 
-async function getProviderConfigs(storage: ProviderStorageArea): Promise<Partial<Record<ProviderType, ProviderConfig>>> {
+async function getProviderConfigs(
+  storage: ProviderStorageArea,
+): Promise<Partial<Record<ProviderType, ProviderConfig>>> {
   const stored = await storage.get(PROVIDER_CONFIGS_KEY);
-  return (stored[PROVIDER_CONFIGS_KEY] as Partial<Record<ProviderType, ProviderConfig>> | undefined) ?? {};
+  return (
+    (stored[PROVIDER_CONFIGS_KEY] as
+      | Partial<Record<ProviderType, ProviderConfig>>
+      | undefined) ?? {}
+  );
 }

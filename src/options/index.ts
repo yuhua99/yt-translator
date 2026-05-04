@@ -4,9 +4,9 @@ import type { ProviderConfig, ProviderSecret, ProviderType } from '../background
 const CUSTOM_MODEL_VALUE = '__custom__';
 
 const MODEL_PRESETS: Record<ProviderType, string[]> = {
-  openai: ['gpt-4.1-mini', 'gpt-4.1', 'gpt-4o-mini'],
-  anthropic: ['claude-3-5-haiku-latest', 'claude-sonnet-4-5'],
-  opencodeZen: ['qwen3.6-plus', 'minimax-m2.7', 'glm-5.1', 'kimi-k2.6'],
+  openai: ['gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.4', 'gpt-5.5', 'gpt-5.2', 'gpt-5.1', 'gpt-4.1-mini', 'gpt-4.1', 'gpt-4o-mini'],
+  anthropic: ['claude-sonnet-4-6', 'claude-haiku-4-5', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-5', 'claude-opus-4-5', 'claude-opus-4-1'],
+  opencodeZen: ['minimax-m2.7', 'minimax-m2.5', 'kimi-k2.6', 'kimi-k2.5', 'glm-5.1', 'glm-5', 'deepseek-v4-pro', 'deepseek-v4-flash', 'qwen3.6-plus', 'qwen3.5-plus', 'mimo-v2-pro', 'mimo-v2-omni', 'mimo-v2.5-pro', 'mimo-v2.5'],
 };
 
 function requiredElement<T extends Element>(selector: string): T {
