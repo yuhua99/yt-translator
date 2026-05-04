@@ -14,10 +14,9 @@ export const PROVIDER_CONFIGS_KEY = 'providerConfigs';
 export const PROVIDER_SECRETS_KEY = 'providerSecrets';
 
 const DEFAULT_PROVIDER_CONFIGS: Record<ProviderType, ProviderConfig> = {
-  mock: { type: 'mock', model: 'mock' },
   openai: { type: 'openai', model: 'gpt-4.1-mini' },
   anthropic: { type: 'anthropic', model: 'claude-sonnet-4-5' },
-  'opencode-go': { type: 'opencode-go', model: 'go' },
+  opencodeZen: { type: 'opencodeZen', model: 'qwen3.6-plus' },
 };
 
 export function getDefaultProviderConfig(providerType: ProviderType): ProviderConfig {

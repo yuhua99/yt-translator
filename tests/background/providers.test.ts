@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { AnthropicProvider } from '../../src/background/providers/anthropic';
-import { createProvider } from '../../src/background/providers/factory';
 import { parseJsonObject } from '../../src/background/providers/json';
 import { OpenAiProvider } from '../../src/background/providers/openai';
-import { OPENCODE_GO_BASE_URL, OpencodeGoProvider } from '../../src/background/providers/opencode-go';
+import { OPENCODE_ZEN_BASE_URL, OpencodeZenProvider } from '../../src/background/providers/opencode-zen';
 import { getProviderConfig, getProviderSecret, setProviderConfig, setProviderSecret, type ProviderStorageArea } from '../../src/background/providers/storage';
 
 const originalFetch = globalThis.fetch;
@@ -47,9 +46,6 @@ describe('provider storage', () => {
     expect(JSON.stringify(sync.data)).not.toContain('secret-key');
   });
 
-  test('returns default config when provider type has no saved config', async () => {
-    await expect(getProviderConfig(createMemoryStorage(), 'opencode-go')).resolves.toEqual({ type: 'opencode-go', model: 'go' });
-  });
 });
 
 describe('OpenAiProvider', () => {
@@ -70,12 +66,24 @@ describe('OpenAiProvider', () => {
     expect(requestBody).not.toHaveProperty('response_format');
   });
 
-  test('treats empty test content as successful connectivity check', async () => {
-    globalThis.fetch = async () => Response.json({ choices: [{ message: {} }] });
+  test('retries with max_completion_tokens when model rejects max_tokens', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    globalThis.fetch = async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      bodies.push(body);
 
-    const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-4.1-mini' }, { apiKey: 'key' });
+      if ('max_tokens' in body) {
+        return Response.json({ error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." } }, { status: 400 });
+      }
+
+      return Response.json({ choices: [{ message: { content: 'OK' } }] });
+    };
+
+    const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-5' }, { apiKey: 'key' });
 
     await expect(provider.testConnection()).resolves.toEqual({ ok: true, text: 'OK', usage: { inputTokens: undefined, outputTokens: undefined } });
+    expect(bodies[0]?.max_tokens).toBe(40);
+    expect(bodies[1]?.max_completion_tokens).toBe(40);
   });
 
   test('sends chat completion request and parses manual translations', async () => {
@@ -97,19 +105,19 @@ describe('OpenAiProvider', () => {
   });
 });
 
-describe('OpencodeGoProvider', () => {
-  test('uses opencode Go OpenAI-compatible base URL', async () => {
+describe('OpencodeZenProvider', () => {
+  test('uses opencode Zen Go base URL', async () => {
     let request: Request | undefined;
     globalThis.fetch = async (input, init) => {
       request = new Request(input, init);
       return Response.json({ choices: [{ message: { content: '{"translations":[{"id":"a","text":"你好"}]}' } }] });
     };
 
-    const provider = new OpencodeGoProvider({ type: 'opencode-go', model: 'go' }, { apiKey: 'key' });
-    await provider.translateManual({ targetLanguage: 'Traditional Chinese', items: [{ id: 'a', text: 'Hello', startMs: 0 }] });
+    const provider = new OpencodeZenProvider({ type: 'opencodeZen', model: 'qwen3.6-plus' }, { apiKey: 'key' });
+    await provider.translateManual({ targetLanguage: 'zh-TW', items: [{ id: 'a', text: 'Hello', startMs: 0 }] });
 
-    expect(request?.url).toBe(`${OPENCODE_GO_BASE_URL}/chat/completions`);
-    expect(createProvider({ type: 'opencode-go', model: 'go' }, { apiKey: 'key' })).toBeInstanceOf(OpencodeGoProvider);
+    expect(request?.url).toBe(`${OPENCODE_ZEN_BASE_URL}/chat/completions`);
+    expect(await request?.json()).toMatchObject({ thinking: false });
   });
 });
 

@@ -15,31 +15,35 @@ export interface SchedulerState {
 
 export interface ScheduleInput extends SchedulerState {
   currentTimeMs: number;
-  translatedUpToMs: number;
   durationMs?: number;
-  isSeek?: boolean;
   windowSizeMs?: number;
-  lookaheadMs?: number;
+  lookaheadWindows?: number;
+  maxPlannedWindows?: number;
 }
 
 const DEFAULT_WINDOW_SIZE_MS = 30_000;
-const DEFAULT_LOOKAHEAD_MS = 10_000;
+const DEFAULT_LOOKAHEAD_WINDOWS = 2;
+const DEFAULT_MAX_PLANNED_WINDOWS = 2;
 
 export function planTranslationWindows(input: ScheduleInput): TranslationWindow[] {
-  if (!input.ccEnabled) {
-    return [];
-  }
+  if (!input.ccEnabled) return [];
 
   const windowSizeMs = input.windowSizeMs ?? DEFAULT_WINDOW_SIZE_MS;
-  const lookaheadMs = input.lookaheadMs ?? DEFAULT_LOOKAHEAD_MS;
-  const current = createWindow(windowStart(input.currentTimeMs, windowSizeMs), windowSizeMs, input.durationMs, 'current');
-  const windows = [current];
+  const lookaheadWindows = input.lookaheadWindows ?? DEFAULT_LOOKAHEAD_WINDOWS;
+  const maxPlannedWindows = input.maxPlannedWindows ?? DEFAULT_MAX_PLANNED_WINDOWS;
+  const currentStartMs = windowStart(input.currentTimeMs, windowSizeMs);
+  const windows: TranslationWindow[] = [];
 
-  if (input.translatedUpToMs - input.currentTimeMs < lookaheadMs) {
-    windows.push(createWindow(current.endMs, windowSizeMs, input.durationMs, 'lookahead'));
+  for (let offset = 0; offset <= lookaheadWindows; offset += 1) {
+    windows.push(createWindow(
+      currentStartMs + offset * windowSizeMs,
+      windowSizeMs,
+      input.durationMs,
+      offset === 0 ? 'current' : 'lookahead',
+    ));
   }
 
-  return dedupePlannedWindows(windows, input);
+  return dedupePlannedWindows(windows, input).slice(0, maxPlannedWindows);
 }
 
 function windowStart(timeMs: number, windowSizeMs: number): number {

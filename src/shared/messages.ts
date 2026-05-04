@@ -9,8 +9,8 @@ export interface ExtensionSettings {
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   enabled: false,
-  targetLanguage: 'Traditional Chinese',
-  providerType: 'opencode-go',
+  targetLanguage: 'zh-TW',
+  providerType: 'opencodeZen',
 };
 
 export interface ProviderUsage {
@@ -65,6 +65,7 @@ export type ExtensionMessage =
   | { type: 'SET_PROVIDER_CONFIG'; config: ProviderConfig }
   | { type: 'SET_PROVIDER_SECRET'; providerType: ProviderType; secret: ProviderSecret }
   | { type: 'TEST_PROVIDER'; config: ProviderConfig; secret: ProviderSecret }
+  | { type: 'VALIDATE_ACTIVE_PROVIDER' }
   | TranslateSubtitleMessage
   | TranslateAsrSubtitleMessage;
 

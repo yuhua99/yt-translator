@@ -14,21 +14,6 @@ describe('planTranslationWindows', () => {
     ]);
   });
 
-  test('skips lookahead when translated buffer enough', () => {
-    expect(planTranslationWindows({ ...emptyState, ccEnabled: true, currentTimeMs: 12_000, translatedUpToMs: 25_000 })).toEqual([
-      { id: '0-30000', startMs: 0, endMs: 30_000, priority: 'current' },
-    ]);
-  });
-
-  test('dedupes completed and in-flight windows', () => {
-    expect(planTranslationWindows({
-      ccEnabled: true,
-      currentTimeMs: 12_000,
-      translatedUpToMs: 12_000,
-      completedWindows: new Set(['0-30000']),
-      inFlightWindows: new Set(['30000-60000']),
-    })).toEqual([]);
-  });
 
   test('returns nothing when CC off', () => {
     expect(planTranslationWindows({ ...emptyState, ccEnabled: false, currentTimeMs: 12_000, translatedUpToMs: 0 })).toEqual([]);

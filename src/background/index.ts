@@ -1,5 +1,5 @@
 import { testProviderConnection } from './providers/provider-test';
-import { getProviderConfig, setProviderConfig, setProviderSecret } from './providers/storage';
+import { getProviderConfig, getProviderSecret, setProviderConfig, setProviderSecret } from './providers/storage';
 import { translateAsrSubtitleMessage, translateSubtitleMessage } from './providers/subtitle-translation';
 import { getSettings, setSettings } from './settings-storage';
 import type { ExtensionMessage, ExtensionResponse } from '../shared/messages';
@@ -41,6 +41,22 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
 
       if (message.type === 'TEST_PROVIDER') {
         sendResponse(await testProviderConnection(message.config, message.secret) satisfies ExtensionResponse);
+        return;
+      }
+
+      if (message.type === 'VALIDATE_ACTIVE_PROVIDER') {
+        const settings = await getSettings(chrome.storage.sync);
+        const config = await getProviderConfig(chrome.storage.sync, settings.providerType);
+        const secret = await getProviderSecret(chrome.storage.local, settings.providerType);
+        if (!secret.apiKey) {
+          sendResponse({ ok: false, error: `Missing API key for ${settings.providerType}` } satisfies ExtensionResponse);
+          return;
+        }
+        if (!config.model) {
+          sendResponse({ ok: false, error: `Missing model for ${settings.providerType}` } satisfies ExtensionResponse);
+          return;
+        }
+        sendResponse({ ok: true, message: 'ok' } satisfies ExtensionResponse);
         return;
       }
 

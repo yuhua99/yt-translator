@@ -22,6 +22,10 @@ export function parseCapturedCaptions(input: CapturedCaptionResponse): ParsedCap
     return { track, segments: parseJson3(response, track) };
   }
 
+  if (response.startsWith('WEBVTT') || response.includes('-->')) {
+    return { track, segments: parseVttCaptions(response, track) };
+  }
+
   return { track, segments: parseXmlCaptions(response, track) };
 }
 
@@ -57,6 +61,27 @@ function parseJson3(responseText: string, track: CaptionTrack): CaptionSegment[]
 
     return [createSegment(track, eventIndex, event.tStartMs, event.dDurationMs === undefined ? undefined : event.tStartMs + event.dDurationMs, text)];
   });
+}
+
+function parseVttCaptions(responseText: string, track: CaptionTrack): CaptionSegment[] {
+  const blocks = responseText.replace(/^WEBVTT[^\n]*(?:\n|$)/, '').split(/\n\s*\n/);
+  const segments: CaptionSegment[] = [];
+
+  for (const block of blocks) {
+    const lines = block.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const timeLineIndex = lines.findIndex((line) => line.includes('-->'));
+    if (timeLineIndex < 0) continue;
+
+    const [startRaw, endRaw] = lines[timeLineIndex]?.split('-->').map((part) => part.trim().split(/\s+/)[0]) ?? [];
+    const startMs = vttTimeToMs(startRaw);
+    const endMs = vttTimeToMs(endRaw);
+    const text = lines.slice(timeLineIndex + 1).join('\n').replace(/<[^>]+>/g, '').trim();
+
+    if (startMs === undefined || endMs === undefined || !text) continue;
+    segments.push(createSegment(track, segments.length, startMs, endMs, text));
+  }
+
+  return segments;
 }
 
 function parseXmlCaptions(responseText: string, track: CaptionTrack): CaptionSegment[] {
@@ -121,6 +146,18 @@ function secondsToMs(value: string | undefined): number | undefined {
 
   const seconds = Number(value);
   return Number.isFinite(seconds) ? Math.round(seconds * 1000) : undefined;
+}
+
+function vttTimeToMs(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const match = /^(?:(\d+):)?(\d{2}):(\d{2})\.(\d{3})$/.exec(value);
+  if (!match) return undefined;
+
+  const hours = Number(match[1] ?? 0);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3]);
+  const millis = Number(match[4]);
+  return (((hours * 60 + minutes) * 60) + seconds) * 1000 + millis;
 }
 
 function ttmlTimeToMs(value: string | undefined): number | undefined {

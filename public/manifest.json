@@ -1,11 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Simple Translator",
-  "description": "Basic Chrome extension template using TypeScript, Bun, and oxlint.",
+  "description": "Translate YouTube subtitles with AI providers.",
   "version": "0.1.0",
   "action": {
-    "default_popup": "popup.html",
     "default_title": "Simple Translator"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "background": {
     "service_worker": "background.js",
@@ -14,16 +17,21 @@
   "content_scripts": [
     {
       "matches": ["https://www.youtube.com/*"],
-      "js": ["content.js"],
+      "js": ["youtube.js"],
+      "world": "MAIN",
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
   "permissions": ["storage"],
-  "host_permissions": ["https://www.youtube.com/*", "https://api.openai.com/*", "https://api.anthropic.com/*", "https://opencode.ai/*"],
-  "web_accessible_resources": [
-    {
-      "resources": ["youtube.js"],
-      "matches": ["https://www.youtube.com/*"]
-    }
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://opencode.ai/*"
   ]
 }

@@ -1,3 +1,4 @@
+import { getCachedTranslations, setCachedTranslations } from '../cache';
 import { createProvider } from './factory';
 import { getProviderConfig, getProviderSecret, type ProviderStores } from './storage';
 import { validateAsrCues, validateManualTranslations } from '../../youtube/translation-validation';
@@ -5,16 +6,26 @@ import type { ProviderType } from './types';
 import type { TranslateAsrSubtitleMessage, TranslateAsrSubtitleResult, TranslateSubtitleMessage, TranslateSubtitleResult } from '../../shared/messages';
 
 export async function translateSubtitleMessage(message: TranslateSubtitleMessage, stores: ProviderStores): Promise<TranslateSubtitleResult> {
+  const providerConfig = await getProviderConfig(stores.sync, message.providerType);
+  const cacheKey = createWindowCacheKey(message, providerConfig.model);
+  const cached = await getCachedTranslations(stores.local, cacheKey);
+  const requestedIds = message.items.map((item) => item.id);
+
+  if (cached) {
+    return { ok: true, translations: validateManualTranslations(requestedIds, cached) };
+  }
+
   const provider = await resolveProvider(message.providerType, stores);
   const result = await provider.translateManual({
     items: message.items,
     targetLanguage: message.targetLanguage,
   });
-  const requestedIds = message.items.map((item) => item.id);
+  const translations = validateManualTranslations(requestedIds, result.translations);
+  await setCachedTranslations(stores.local, cacheKey, translations);
 
   return {
     ok: true,
-    translations: validateManualTranslations(requestedIds, result.translations),
+    translations,
     usage: result.usage,
   };
 }
@@ -32,6 +43,30 @@ export async function translateAsrSubtitleMessage(message: TranslateAsrSubtitleM
     cues: validateAsrCues(knownSegmentIds, result.cues),
     usage: result.usage,
   };
+}
+
+function createWindowCacheKey(message: TranslateSubtitleMessage, model: string): string {
+  const first = message.items[0]?.startMs ?? 0;
+  const windowStartMs = Math.floor(first / 30_000) * 30_000;
+  const sourceHash = hashString(message.items.map((item) => `${item.id}:${item.text}`).join('\n'));
+  return [
+    'v1',
+    message.videoId,
+    message.trackId,
+    message.targetLanguage,
+    message.providerType,
+    model,
+    windowStartMs,
+    sourceHash,
+  ].join('|');
+}
+
+function hashString(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = Math.imul(31, hash) + input.charCodeAt(i) | 0;
+  }
+  return Math.abs(hash).toString(36);
 }
 
 async function resolveProvider(providerType: ProviderType, stores: ProviderStores) {

@@ -20,7 +20,7 @@ async function buildOnce(): Promise<void> {
   await copyPublic();
 
   const result = await Bun.build({
-    entrypoints: ['src/background/index.ts', 'src/content/index.ts', 'src/popup/index.ts', 'src/youtube/main-world-capture.ts'],
+    entrypoints: ['src/background/index.ts', 'src/content/index.ts', 'src/options/index.ts', 'src/youtube/main-world-capture.ts'],
     outdir: OUT_DIR,
     target: 'browser',
     format: 'esm',

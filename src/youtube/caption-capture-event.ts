@@ -1,4 +1,4 @@
-export const CAPTION_EVENT = 'shinkansen-yt-captions';
+export const CAPTION_EVENT = 'simple-translator-yt-captions';
 
 export interface CaptionsCapturedEventDetail {
   url: string;

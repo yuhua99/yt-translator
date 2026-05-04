@@ -1,26 +1,22 @@
-import { AsrOverlayRenderer } from '../youtube/asr-overlay-renderer';
 import { CAPTION_EVENT, type CaptionsCapturedEventDetail } from '../youtube/caption-capture-event';
-import { ManualSubtitleRenderer } from '../youtube/manual-renderer';
-import { createTranslationProgressHud, type TranslationProgressHud } from '../youtube/progress-hud';
+import { injectAiTranslateMenu, type AiMenuInjection } from '../youtube/menu-injection';
+import { hideNativeCaptions, showNativeCaptions } from '../youtube/native-caption-hider';
+
 import { YoutubeSubtitleSession } from '../youtube/session';
+import { showStatusOverlay } from '../youtube/status-overlay';
+import { SubtitleOverlayRenderer } from '../youtube/subtitle-overlay-renderer';
 import { createRuntimeTranslatorClient } from '../youtube/translator-client';
-import type { ExtensionMessage, ExtensionSettings, SettingsResponse } from '../shared/messages';
+import type { ExtensionMessage, ExtensionResponse, ExtensionSettings, MessageResponse, SettingsResponse } from '../shared/messages';
 
 let session: YoutubeSubtitleSession | undefined;
-let asrOverlayRenderer: AsrOverlayRenderer | undefined;
-let manualRenderer: ManualSubtitleRenderer | undefined;
-let progressHud: TranslationProgressHud | undefined;
+let renderer: SubtitleOverlayRenderer | undefined;
+let menuInjection: AiMenuInjection | undefined;
+let aiModeActive = false;
+let lastVideoId = readVideoId();
+let animationFrameId: number | undefined;
 
-function sendMessage(message: ExtensionMessage): Promise<SettingsResponse> {
+function sendMessage<TResponse extends ExtensionResponse>(message: ExtensionMessage): Promise<TResponse> {
   return chrome.runtime.sendMessage(message);
-}
-
-function injectMainWorldCapture(): void {
-  const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('youtube.js');
-  script.type = 'module';
-  script.onload = () => script.remove();
-  (document.documentElement || document.head).append(script);
 }
 
 function listenForCaptionCapture(): void {
@@ -37,69 +33,131 @@ function listenForPlayback(): void {
       void scheduleCurrentWindow(event.target);
     }
   }, true);
+
+  document.addEventListener('seeked', (event) => {
+    if (event.target instanceof HTMLVideoElement) {
+      void scheduleCurrentWindow(event.target);
+    }
+  }, true);
+}
+
+function listenForNavigation(): void {
+  window.addEventListener('yt-navigate-finish', handleMaybeVideoChanged);
+  window.setInterval(handleMaybeVideoChanged, 1_000);
+}
+
+function handleMaybeVideoChanged(): void {
+  const videoId = readVideoId();
+  if (videoId === lastVideoId) return;
+
+  lastVideoId = videoId;
+  renderer?.clear();
+
+  if (!aiModeActive) {
+    session?.stop();
+    return;
+  }
+
+  session?.resetForNavigation(videoId);
+  hideNativeCaptions();
+  showStatusOverlay('AI Translate: waiting for captions');
+}
+
+async function activateAiTranslate(): Promise<void> {
+  const validation = await sendMessage<MessageResponse>({ type: 'VALIDATE_ACTIVE_PROVIDER' });
+  if (!validation.ok) {
+    showStatusOverlay(`AI Translate: ${validation.error}`);
+    chrome.runtime.openOptionsPage();
+    return;
+  }
+
+  const response = await sendMessage<SettingsResponse>({ type: 'GET_SETTINGS' });
+  if (!response.ok) {
+    showStatusOverlay(`AI Translate: ${response.error}`);
+    return;
+  }
+
+  aiModeActive = true;
+  createSession({ ...response.settings, enabled: true });
+  hideNativeCaptions();
+  showStatusOverlay('AI Translate: translating');
+  void scheduleCurrentWindow();
+  startRenderLoop();
+}
+
+function deactivateAiTranslate(): void {
+  aiModeActive = false;
+  session?.stop();
+  session = undefined;
+  renderer?.clear();
+  showNativeCaptions();
+  stopRenderLoop();
 }
 
 async function scheduleCurrentWindow(video = document.querySelector('video')): Promise<void> {
-  if (!session || !video) {
+  if (!aiModeActive || !session || !video) return;
+
+  const ccEnabled = isCcEnabled();
+  if (!ccEnabled) {
+    deactivateAiTranslate();
     return;
   }
 
   const currentTimeMs = video.currentTime * 1000;
-  const ccEnabled = isCcEnabled();
+  hideNativeCaptions();
+  await session.ensureTranslations(currentTimeMs, true);
+  renderer?.render(session.translatedCues, currentTimeMs);
+}
 
-  if (!ccEnabled) {
-    asrOverlayRenderer?.clear();
-    manualRenderer?.clear();
-    return;
-  }
+function startRenderLoop(): void {
+  if (animationFrameId !== undefined) return;
 
-  await session.ensureTranslations(currentTimeMs, ccEnabled);
+  const render = () => {
+    const video = document.querySelector('video');
+    if (aiModeActive && session && video) {
+      renderer?.render(session.translatedCues, video.currentTime * 1000);
+    }
+    animationFrameId = window.requestAnimationFrame(render);
+  };
 
-  if (session.mode === 'asr') {
-    manualRenderer?.clear();
-    asrOverlayRenderer?.render(session.translatedCues, currentTimeMs);
-    return;
-  }
+  animationFrameId = window.requestAnimationFrame(render);
+}
 
-  asrOverlayRenderer?.clear();
-  manualRenderer?.render(session.translatedCues, currentTimeMs);
+function stopRenderLoop(): void {
+  if (animationFrameId === undefined) return;
+  window.cancelAnimationFrame(animationFrameId);
+  animationFrameId = undefined;
 }
 
 function isCcEnabled(): boolean {
   const button = document.querySelector<HTMLButtonElement>('.ytp-subtitles-button');
-  return button?.getAttribute('aria-pressed') === 'true';
+  return button?.getAttribute('aria-pressed') !== 'false';
 }
 
 function createSession(settings: ExtensionSettings): void {
   session?.stop();
-  asrOverlayRenderer?.clear();
-  manualRenderer?.clear();
-  progressHud?.clearAll();
-  progressHud = createTranslationProgressHud();
-  session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient(), progressHud);
-  asrOverlayRenderer = new AsrOverlayRenderer();
-  manualRenderer = new ManualSubtitleRenderer();
+  renderer?.clear();
+  session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient());
+  renderer = new SubtitleOverlayRenderer();
   session.start();
 }
 
-async function boot(): Promise<void> {
-  injectMainWorldCapture();
-  listenForCaptionCapture();
-  listenForPlayback();
-
-  const response = await sendMessage({ type: 'GET_SETTINGS' });
-
-  if (!response.ok) {
-    console.warn('Simple Translator settings load failed:', response.error);
-    return;
-  }
-
-  if (!response.settings.enabled) {
-    return;
-  }
-
-  createSession(response.settings);
-  console.info('Simple Translator enabled:', response.settings.targetLanguage);
+function readVideoId(): string {
+  return new URL(location.href).searchParams.get('v') ?? '';
 }
 
-void boot();
+function boot(): void {
+  listenForCaptionCapture();
+  listenForPlayback();
+  listenForNavigation();
+  menuInjection = injectAiTranslateMenu(() => {
+    void activateAiTranslate();
+  });
+
+  window.addEventListener('pagehide', () => {
+    menuInjection?.stop();
+    session?.stop();
+  });
+}
+
+boot();

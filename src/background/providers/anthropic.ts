@@ -29,8 +29,12 @@ export class AnthropicProvider implements AiProvider {
   }
 
   async testConnection(): Promise<ProviderTestOutput> {
-    const response = await this.complete('Reply with OK.', { maxTokens: 40, system: 'Reply with OK only.' });
-    return { ok: true, text: response.content.trim(), usage: response.usage };
+    const response = await this.complete('Reply exactly: OK', { maxTokens: 40, system: 'Reply exactly: OK' });
+    const text = response.content.trim();
+    if (text !== 'OK') {
+      throw new Error(`Provider test failed: expected OK, got ${text}`);
+    }
+    return { ok: true, text, usage: response.usage };
   }
 
   private async complete(prompt: string, options: { maxTokens?: number; system?: string } = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {

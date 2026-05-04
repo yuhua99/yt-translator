@@ -38,13 +38,17 @@ export class OpenAiProvider implements AiProvider {
   }
 
   async testConnection(): Promise<ProviderTestOutput> {
-    const response = await this.complete('Reply with OK.', {
+    const response = await this.complete('Reply exactly: OK', {
       maxTokens: 40,
       json: false,
-      system: 'Reply with OK only.',
-      allowEmptyContent: true,
+      system: 'Reply exactly: OK',
+      allowEmptyContent: false,
     });
-    return { ok: true, text: response.content.trim() || 'OK', usage: response.usage };
+    const text = response.content.trim();
+    if (text !== 'OK') {
+      throw new Error(`Provider test failed: expected OK, got ${text}`);
+    }
+    return { ok: true, text, usage: response.usage };
   }
 
   private async complete(prompt: string, options: CompletionOptions = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
@@ -54,29 +58,7 @@ export class OpenAiProvider implements AiProvider {
       throw new Error(`Missing API key for provider: ${this.config.type}`);
     }
 
-    const response = await fetch(`${this.defaultBaseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'authorization': `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.config.model,
-        temperature: 0,
-        ...(options.maxTokens ? { max_tokens: options.maxTokens } : {}),
-        ...(options.json === false ? {} : { response_format: { type: 'json_object' } }),
-        messages: [
-          { role: 'system', content: options.system ?? 'You are a subtitle translation engine. Return valid JSON only.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
-    });
-
-    const responseText = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`OpenAI request failed: ${response.status} ${responseText}`);
-    }
+    const { responseText } = await this.fetchChatCompletion(prompt, options, 'max_tokens');
 
     const json = JSON.parse(responseText) as OpenAiResponse;
     const content = extractOpenAiContent(json);
@@ -92,6 +74,47 @@ export class OpenAiProvider implements AiProvider {
         outputTokens: json.usage?.completion_tokens,
       },
     };
+  }
+
+  protected extraChatCompletionBody(): Record<string, unknown> {
+    return {};
+  }
+
+  private async fetchChatCompletion(
+    prompt: string,
+    options: CompletionOptions,
+    tokenLimitKey: 'max_tokens' | 'max_completion_tokens',
+  ): Promise<{ responseText: string }> {
+    const response = await fetch(`${this.defaultBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${this.secret.apiKey}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        temperature: 0,
+        ...(options.maxTokens ? { [tokenLimitKey]: options.maxTokens } : {}),
+        ...(options.json === false ? {} : { response_format: { type: 'json_object' } }),
+        ...this.extraChatCompletionBody(),
+        messages: [
+          { role: 'system', content: options.system ?? 'You are a subtitle translation engine. Return valid JSON only.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+
+    const responseText = await response.text();
+
+    if (response.ok) {
+      return { responseText };
+    }
+
+    if (tokenLimitKey === 'max_tokens' && responseText.includes("'max_tokens' is not supported")) {
+      return this.fetchChatCompletion(prompt, options, 'max_completion_tokens');
+    }
+
+    throw new Error(`OpenAI request failed: ${response.status} ${responseText}`);
   }
 }
 

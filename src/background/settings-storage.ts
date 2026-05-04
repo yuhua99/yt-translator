@@ -11,10 +11,6 @@ export async function getSettings(storage: SettingsStorageArea): Promise<Extensi
   const stored = await storage.get(SETTINGS_KEY);
   const settings = { ...DEFAULT_SETTINGS, ...(stored[SETTINGS_KEY] as Partial<ExtensionSettings> | undefined) };
 
-  if (settings.providerType === 'mock') {
-    return { ...settings, providerType: DEFAULT_SETTINGS.providerType };
-  }
-
   return settings;
 }
 

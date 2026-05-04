@@ -1,7 +1,7 @@
 import type { AsrCueItem, ManualTranslationItem } from '../../youtube/translation-validation';
 import type { ProviderUsage } from '../../shared/messages';
 
-export type ProviderType = 'mock' | 'openai' | 'anthropic' | 'opencode-go';
+export type ProviderType = 'openai' | 'anthropic' | 'opencodeZen';
 
 export interface ProviderConfig {
   type: ProviderType;
