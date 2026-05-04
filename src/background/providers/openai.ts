@@ -23,6 +23,7 @@ export class OpenAiProvider implements AiProvider {
     private readonly config: ProviderConfig,
     private readonly secret: ProviderSecret,
     private readonly defaultBaseUrl = 'https://api.openai.com/v1',
+    private readonly providerLabel = 'OpenAI',
   ) {}
 
   async translateManual(input: ManualTranslateInput): Promise<ManualTranslateOutput> {
@@ -114,7 +115,7 @@ export class OpenAiProvider implements AiProvider {
       return this.fetchChatCompletion(prompt, options, 'max_completion_tokens');
     }
 
-    throw new Error(`OpenAI request failed: ${response.status} ${responseText}`);
+    throw new Error(`${this.providerLabel} request failed: ${response.status} ${responseText}`);
   }
 }
 

@@ -3,7 +3,18 @@ import type { TranslatedCue } from './caption-types';
 const OVERLAY_ID = 'simple-translator-subtitle-overlay';
 
 export function findActiveCue(cues: readonly TranslatedCue[], currentTimeMs: number): TranslatedCue | undefined {
-  return cues.find((cue) => currentTimeMs >= cue.startMs && currentTimeMs < cue.endMs);
+  const sortedCues = [...cues].sort((left, right) => left.startMs - right.startMs);
+
+  for (let index = 0; index < sortedCues.length; index += 1) {
+    const cue = sortedCues[index];
+    if (!cue) continue;
+
+    const nextStartMs = sortedCues[index + 1]?.startMs ?? Infinity;
+    const effectiveEndMs = Math.min(cue.endMs, nextStartMs);
+    if (currentTimeMs >= cue.startMs && currentTimeMs < effectiveEndMs) return cue;
+  }
+
+  return undefined;
 }
 
 export class SubtitleOverlayRenderer {

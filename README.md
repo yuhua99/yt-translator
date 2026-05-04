@@ -10,7 +10,7 @@ Implemented:
 
 - MAIN-world YouTube `/api/timedtext` capture
 - `json3` and `vtt` subtitle parsing
-- YouTube subtitles menu injection: `AI Translate`
+- Popup enable checkbox controls YouTube AI subtitles
 - Native subtitle hiding while AI mode active
 - Custom subtitle overlay renderer
 - Bottom-right status overlay
@@ -50,7 +50,7 @@ Load extension:
 2. Enable **Developer mode**
 3. Click **Load unpacked**
 4. Select `dist/`
-5. Open YouTube, enable captions, open subtitle menu, choose `AI Translate`
+5. Open YouTube, enable captions, then enable extension from popup
 
 ## Build
 
@@ -104,7 +104,6 @@ src/
     session.ts
     scheduler.ts
     asr-merge.ts
-    menu-injection.ts
     native-caption-hider.ts
     subtitle-overlay-renderer.ts
     status-overlay.ts

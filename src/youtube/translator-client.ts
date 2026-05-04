@@ -3,8 +3,8 @@ import type { ProviderType } from '../background/providers/types';
 import type { TranslateAsrSubtitleResult, TranslateSubtitleResult } from '../shared/messages';
 
 export interface TranslatorClient {
-  translateSubtitle(input: TranslateSubtitleInput, signal: AbortSignal): Promise<TranslateSubtitleResult>;
-  translateAsrSubtitle(input: TranslateSubtitleInput, signal: AbortSignal): Promise<TranslateAsrSubtitleResult>;
+  translateSubtitle(input: TranslateSubtitleInput, signal: AbortSignal): Promise<TranslateSubtitleResult | { ok: false; error: string }>;
+  translateAsrSubtitle(input: TranslateSubtitleInput, signal: AbortSignal): Promise<TranslateAsrSubtitleResult | { ok: false; error: string }>;
 }
 
 export interface TranslateSubtitleInput {

@@ -4,7 +4,8 @@
   "description": "Translate YouTube subtitles with AI providers.",
   "version": "0.1.0",
   "action": {
-    "default_title": "Simple Translator"
+    "default_title": "Simple Translator",
+    "default_popup": "popup.html"
   },
   "options_ui": {
     "page": "options.html",

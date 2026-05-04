@@ -1,0 +1,49 @@
+body {
+  margin: 0;
+  min-width: 260px;
+  color: #f4f4f5;
+  background: #111827;
+  font: 13px/1.4 system-ui, sans-serif;
+}
+
+main {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #111827;
+  background: #f9fafb;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover {
+  background: #e5e7eb;
+}
+
+#status {
+  min-height: 18px;
+  margin: 0;
+  color: #cbd5e1;
+}

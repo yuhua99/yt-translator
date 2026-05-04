@@ -52,7 +52,7 @@ export class YoutubeSubtitleSession {
     this.videoId = parsed.track.videoId;
     this.track = parsed.track;
     this.mode = parsed.track.mode;
-    this.segments = parsed.segments;
+    this.segments = inferSegmentEndTimes(parsed.segments);
     this.translatedCues = [];
     this.translatedSegmentIds.clear();
     this.inFlightWindows.clear();
@@ -90,8 +90,8 @@ export class YoutubeSubtitleSession {
 
     try {
       const translatedIds = this.mode === 'asr'
-        ? await this.translateManualSegments(mergeAsrSegments(segments))
-        : await this.translateManualSegments(segments);
+        ? await this.translateManualSegments(mergeAsrSegments(segments), true)
+        : await this.translateManualSegments(segments, false);
 
       for (const id of translatedIds) {
         this.translatedSegmentIds.add(id);
@@ -107,7 +107,7 @@ export class YoutubeSubtitleSession {
     }
   }
 
-  private async translateManualSegments(segments: CaptionSegment[]): Promise<string[]> {
+  private async translateManualSegments(segments: CaptionSegment[], extendForReading: boolean): Promise<string[]> {
     if (!this.track) {
       return [];
     }
@@ -120,6 +120,10 @@ export class YoutubeSubtitleSession {
       targetLanguage: this.settings.targetLanguage,
     }, this.abortController.signal);
 
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
+
     const translations = new Map(result.translations.map((item) => [item.id, item.text]));
     const translatedIds: string[] = [];
 
@@ -130,10 +134,10 @@ export class YoutubeSubtitleSession {
         continue;
       }
 
-      this.translatedCues.push({
+      this.upsertTranslatedCue({
         id: segment.id,
         startMs: segment.startMs,
-        endMs: segment.endMs ?? segment.startMs + 2_000,
+        endMs: extendForReading ? adjustCueEndMs(segment.startMs, segment.endMs ?? segment.startMs + 1_500, translatedText) : segment.endMs ?? segment.startMs + 1_500,
         sourceText: segment.text,
         translatedText,
         sourceSegmentIds: [segment.id],
@@ -144,7 +148,39 @@ export class YoutubeSubtitleSession {
     return translatedIds;
   }
 
+  private upsertTranslatedCue(cue: TranslatedCue): void {
+    const existingIndex = this.translatedCues.findIndex((item) => item.id === cue.id || item.startMs === cue.startMs);
+    if (existingIndex >= 0) {
+      this.translatedCues[existingIndex] = cue;
+    } else {
+      this.translatedCues.push(cue);
+    }
+
+    this.translatedCues.sort((left, right) => left.startMs - right.startMs);
+  }
+
   private segmentsInWindow(window: TranslationWindow): CaptionSegment[] {
     return this.segments.filter((segment) => segment.startMs >= window.startMs && segment.startMs < window.endMs);
   }
+}
+
+const READ_MS_PER_CHAR = 200;
+const MIN_READ_MS = 800;
+const FALLBACK_SEGMENT_MS = 1_500;
+
+function inferSegmentEndTimes(segments: readonly CaptionSegment[]): CaptionSegment[] {
+  return segments.map((segment, index) => {
+    if (segment.endMs !== undefined) return segment;
+
+    const next = segments[index + 1];
+    return {
+      ...segment,
+      endMs: next ? Math.max(segment.startMs, next.startMs) : segment.startMs + FALLBACK_SEGMENT_MS,
+    };
+  });
+}
+
+function adjustCueEndMs(startMs: number, endMs: number, text: string): number {
+  const readMs = Math.max(MIN_READ_MS, Array.from(text).length * READ_MS_PER_CHAR);
+  return Math.max(endMs, startMs + readMs);
 }

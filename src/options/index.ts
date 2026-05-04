@@ -24,6 +24,7 @@ const providerApiKeyInput = requiredElement<HTMLInputElement>('#provider-api-key
 const saveButton = requiredElement<HTMLButtonElement>('#save');
 const testProviderButton = requiredElement<HTMLButtonElement>('#test-provider');
 const status = requiredElement<HTMLParagraphElement>('#status');
+let currentSettings: ExtensionSettings = DEFAULT_SETTINGS;
 
 function sendMessage<TResponse extends ExtensionResponse>(message: ExtensionMessage): Promise<TResponse> {
   return chrome.runtime.sendMessage(message);
@@ -76,6 +77,7 @@ function syncCustomModelVisibility(): void {
 }
 
 function renderSettings(settings: ExtensionSettings): void {
+  currentSettings = settings;
   targetLanguageInput.value = settings.targetLanguage;
   providerTypeInput.value = settings.providerType;
   renderModelPresets(settings.providerType);
@@ -102,7 +104,7 @@ async function loadSettings(): Promise<void> {
 async function saveSettings(): Promise<boolean> {
   const providerType = getProviderType();
   const settings: ExtensionSettings = {
-    enabled: false,
+    ...currentSettings,
     targetLanguage: targetLanguageInput.value,
     providerType,
   };

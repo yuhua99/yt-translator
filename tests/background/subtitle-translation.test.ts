@@ -30,9 +30,13 @@ function createStores(): ProviderStores {
 
 describe('translateSubtitleMessage', () => {
   test('returns provider-agnostic manual translations by id', async () => {
-    globalThis.fetch = async () => Response.json({
-      choices: [{ message: { content: '{"translations":[{"id":"a","text":"你好"},{"id":"b","text":"世界"}]}' } }],
-    });
+    let requestBody: { messages?: Array<{ content?: string }> } | undefined;
+    globalThis.fetch = async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body)) as { messages?: Array<{ content?: string }> };
+      return Response.json({
+        choices: [{ message: { content: '{"translations":[{"id":"0","text":"你好"},{"id":"1","text":"世界"}]}' } }],
+      });
+    };
 
     await expect(translateSubtitleMessage({
       type: 'TRANSLATE_SUBTITLE_AI_PROVIDER',
@@ -52,6 +56,8 @@ describe('translateSubtitleMessage', () => {
       ],
       usage: { inputTokens: undefined, outputTokens: undefined },
     });
+    expect(requestBody?.messages?.at(-1)?.content).toContain('"id":"0"');
+    expect(requestBody?.messages?.at(-1)?.content).not.toContain('"id":"a"');
   });
 });
 

@@ -117,7 +117,16 @@ describe('OpencodeZenProvider', () => {
     await provider.translateManual({ targetLanguage: 'zh-TW', items: [{ id: 'a', text: 'Hello', startMs: 0 }] });
 
     expect(request?.url).toBe(`${OPENCODE_ZEN_BASE_URL}/chat/completions`);
-    expect(await request?.json()).toMatchObject({ thinking: false });
+    expect(await request?.json()).toMatchObject({ thinking: { type: 'disabled' } });
+  });
+
+  test('reports opencode Zen in request errors', async () => {
+    globalThis.fetch = async () => Response.json({ error: { message: 'bad request' } }, { status: 400 });
+
+    const provider = new OpencodeZenProvider({ type: 'opencodeZen', model: 'deepseek-v3.2' }, { apiKey: 'key' });
+
+    await expect(provider.translateManual({ targetLanguage: 'zh-TW', items: [{ id: 'a', text: 'Hello', startMs: 0 }] }))
+      .rejects.toThrow('opencode Zen request failed: 400');
   });
 });
 

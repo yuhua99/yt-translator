@@ -11,17 +11,26 @@ export async function translateSubtitleMessage(message: TranslateSubtitleMessage
   const cached = await getCachedTranslations(stores.local, cacheKey);
   const requestedIds = message.items.map((item) => item.id);
 
-  if (cached) {
+  if (cached && cached.length > 0) {
     return { ok: true, translations: validateManualTranslations(requestedIds, cached) };
   }
 
   const provider = await resolveProvider(message.providerType, stores);
+  const providerItems = message.items.map((item, index) => ({ ...item, id: String(index) }));
+  const providerIdToSourceId = new Map(providerItems.map((item, index) => [item.id, message.items[index]?.id]));
   const result = await provider.translateManual({
-    items: message.items,
+    items: providerItems,
     targetLanguage: message.targetLanguage,
   });
-  const translations = validateManualTranslations(requestedIds, result.translations);
-  await setCachedTranslations(stores.local, cacheKey, translations);
+  const providerTranslations = validateManualTranslations(providerItems.map((item) => item.id), result.translations);
+  const translations = providerTranslations.flatMap((item) => {
+    const sourceId = providerIdToSourceId.get(item.id);
+    return sourceId ? [{ id: sourceId, text: item.text }] : [];
+  });
+
+  if (translations.length > 0) {
+    await setCachedTranslations(stores.local, cacheKey, translations);
+  }
 
   return {
     ok: true,

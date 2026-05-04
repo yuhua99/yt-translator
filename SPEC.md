@@ -38,24 +38,23 @@ No `activeTab`, no `alarms`, no `unlimitedStorage`.
 Content scripts:
 
 - MAIN world, `document_start`: intercept YouTube caption requests
-- Isolated world: menu injection, session lifecycle, overlay renderer, status overlay
+- Isolated world: popup-controlled session lifecycle, overlay renderer, status overlay
 
 ## Core UX
 
 User flow:
 
-1. User opens YouTube captions menu.
-2. Extension injects one item: `AI Translate`.
-3. User selects `AI Translate`.
-4. Extension validates provider/API key/model/target language settings.
-5. If missing config: open options page and show short status overlay.
-6. If valid: start translation for current subtitle track.
-7. Hide native YouTube captions completely.
-8. Render AI-translated subtitles via custom overlay.
+1. User opens extension popup.
+2. User enables YouTube AI subtitles checkbox.
+3. Extension validates provider/API key/model/target language settings.
+4. If missing config: open options page and show short status overlay.
+5. If valid: start translation for current subtitle track.
+6. Hide native YouTube captions completely.
+7. Render AI-translated subtitles via custom overlay.
 
 Target language selected only in extension options. YouTube menu does not show language list.
 
-AI mode persists across YouTube SPA navigation until user switches back to normal subtitles or turns captions off.
+AI mode persists across YouTube SPA navigation while popup enable setting remains on, unless user turns captions off.
 
 When new video starts and AI mode remains active, translation begins automatically when captions become available. Translation start status overlay is enough; no extra “active for new video” notice.
 
@@ -481,23 +480,19 @@ Non-fatal errors:
 
 No infinite retry.
 
-## Menu Injection
+## Popup Control
 
-Inject exactly one item into YouTube subtitles menu:
+Popup contains:
 
-```txt
-AI Translate
-```
+- `Enable YouTube AI subtitles` checkbox
+- `Settings` button opening options page
 
 Implementation:
 
-- MutationObserver watches YouTube settings/subtitles menu open
-- detect subtitle/language menu DOM
-- insert item matching YouTube menu style
-- avoid duplicates
-- click handler starts AI mode using current source subtitle track and options target language
-
-No fallback floating button. If injection fails, feature unavailable until DOM heuristic updated.
+- checkbox persists `settings.enabled`
+- YouTube content script listens to `chrome.storage.onChanged`
+- enabled starts AI mode using current source subtitle track and options target language
+- disabled stops AI mode and restores native captions
 
 ## SPA Lifecycle
 
@@ -547,7 +542,6 @@ src/
       asr-merge.ts
       scheduler.ts
       renderer.ts
-      menu-injection.ts
       player-state.ts
       status-overlay.ts
       background-client.ts
@@ -566,7 +560,6 @@ src/
 
 - No webpage translation outside YouTube
 - No Drive/Docs support
-- No browser popup as primary UI
 - No custom provider/base URL
 - No native messaging / local CLI provider
 - No streaming translation

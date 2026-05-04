@@ -1,4 +1,4 @@
-import { CAPTION_EVENT, isTimedTextUrl, type CaptionsCapturedEventDetail } from './caption-capture-event';
+import { CAPTION_EVENT, CAPTION_REQUEST_EVENT, isTimedTextUrl, type CaptionsCapturedEventDetail } from './caption-capture-event';
 
 declare global {
   interface Window {
@@ -10,10 +10,12 @@ if (!window.__simpleTranslatorCaptionCaptureInstalled) {
   window.__simpleTranslatorCaptionCaptureInstalled = true;
   installXhrCapture();
   installFetchCapture();
+  installCaptionRequestHandler();
 }
 
 function dispatchCaptionCapture(detail: CaptionsCapturedEventDetail): void {
   window.dispatchEvent(new CustomEvent<CaptionsCapturedEventDetail>(CAPTION_EVENT, { detail }));
+  window.postMessage({ source: 'simple-translator', type: CAPTION_EVENT, detail }, '*');
 }
 
 function installXhrCapture(): void {
@@ -39,8 +41,8 @@ function installXhrCapture(): void {
     const url = this.__simpleTranslatorCaptionUrl;
 
     if (url && isTimedTextUrl(url)) {
-      this.addEventListener('load', () => {
-        if (typeof this.responseText === 'string') {
+      this.addEventListener('readystatechange', () => {
+        if (this.readyState === 4 && this.status === 200 && this.responseText) {
           dispatchCaptionCapture({ url, responseText: this.responseText });
         }
       });
@@ -62,7 +64,7 @@ function installFetchCapture(): void {
     }
 
     void response.clone().text().then((responseText) => {
-      dispatchCaptionCapture({ url, responseText });
+      if (responseText) dispatchCaptionCapture({ url, responseText });
     });
 
     return response;
@@ -70,6 +72,22 @@ function installFetchCapture(): void {
 
   window.fetch = Object.assign(patchedFetch, originalFetch);
 }
+
+function installCaptionRequestHandler(): void {
+  window.addEventListener(CAPTION_REQUEST_EVENT, () => {
+    // Intentionally no active fetch. YouTube timedtext often returns empty body
+    // unless request originates from player with its playback tokens.
+  });
+
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return;
+    const data = event.data as { source?: string; type?: string };
+    if (data.source === 'simple-translator' && data.type === CAPTION_REQUEST_EVENT) {
+      // Intentionally no active fetch. Isolated world will force CC reload instead.
+    }
+  });
+}
+
 
 function getFetchUrl(input: RequestInfo | URL): string {
   if (typeof input === 'string') {
