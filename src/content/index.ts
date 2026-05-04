@@ -4,7 +4,7 @@ import { hideNativeCaptions, showNativeCaptions } from '../youtube/native-captio
 import { YoutubeSubtitleSession } from '../youtube/session';
 import { showStatusOverlay } from '../youtube/status-overlay';
 import { SubtitleOverlayRenderer } from '../youtube/subtitle-overlay-renderer';
-import { createRuntimeTranslatorClient, type TranslatorClient } from '../youtube/translator-client';
+import { createRuntimeTranslatorClient } from '../youtube/translator-client';
 import type { ExtensionMessage, ExtensionResponse, ExtensionSettings, MessageResponse, SettingsResponse } from '../shared/messages';
 
 let session: YoutubeSubtitleSession | undefined;
@@ -15,6 +15,7 @@ let animationFrameId: number | undefined;
 let lastCaptionRequestAt = 0;
 let suppressCcOffUntil = 0;
 let autoCcToggled = false;
+let waitingForInitialCaptions = false;
 
 function sendMessage<TResponse extends ExtensionResponse>(message: ExtensionMessage): Promise<TResponse> {
   return chrome.runtime.sendMessage(message);
@@ -39,7 +40,6 @@ function handleCaptionCapture(detail: CaptionsCapturedEventDetail): void {
   if (!session || !detail.responseText) return;
 
   session.handleCapturedCaptions(detail);
-  showStatusOverlay(`AI Translate: captions captured, ${session.segments.length} segments, ${detail.responseText.length} chars, ${session.mode ?? 'unknown'}, ${shortUrl(detail.url)}`);
   void scheduleCurrentWindow();
 }
 
@@ -90,7 +90,7 @@ function handleMaybeVideoChanged(): void {
 
   session?.resetForNavigation(videoId);
   hideNativeCaptions();
-  showStatusOverlay('AI Translate: waiting for captions');
+
 }
 
 async function activateAiTranslate(settingsOverride?: ExtensionSettings): Promise<void> {
@@ -108,12 +108,12 @@ async function activateAiTranslate(settingsOverride?: ExtensionSettings): Promis
   createSession({ ...settings, enabled: true });
   hideNativeCaptions();
   autoCcToggled = false;
-  showStatusOverlay('AI Translate: active, waiting for player caption XHR');
+  waitingForInitialCaptions = true;
   requestCurrentCaptions();
+  void forceSubtitleReload();
   void scheduleCurrentWindow();
   window.setTimeout(() => {
     if (aiModeActive && (!session?.track || session.segments.length === 0)) {
-      showStatusOverlay('AI Translate: no captured captions, reloading YouTube CC');
       void forceSubtitleReload();
     }
   }, 1_000);
@@ -122,6 +122,7 @@ async function activateAiTranslate(settingsOverride?: ExtensionSettings): Promis
 
 function deactivateAiTranslate(): void {
   aiModeActive = false;
+  waitingForInitialCaptions = false;
   session?.stop();
   session = undefined;
   renderer?.clear();
@@ -133,28 +134,25 @@ async function scheduleCurrentWindow(video = document.querySelector('video')): P
   if (!aiModeActive || !session || !video) return;
 
   if (!session.track) {
-    showStatusOverlay('AI Translate: no caption track yet, waiting for player XHR');
     requestCurrentCaptions();
   }
 
   const ccEnabled = isCcEnabled();
   if (!ccEnabled) {
-    if (Date.now() < suppressCcOffUntil) return;
+    if (waitingForInitialCaptions || Date.now() < suppressCcOffUntil) return;
     void setEnabledSetting(false);
     deactivateAiTranslate();
     return;
   }
 
+  if (session.track) {
+    waitingForInitialCaptions = false;
+  }
+
   const currentTimeMs = video.currentTime * 1000;
   hideNativeCaptions();
-  const before = session.translatedCues.length;
   await session.ensureTranslations(currentTimeMs, true);
-  const after = session.translatedCues.length;
   renderer?.render(session.translatedCues, currentTimeMs);
-
-  if (session.track) {
-    showStatusOverlay(`AI Translate: track ${session.track.languageCode}/${session.mode}, segments ${session.segments.length}, translated ${after}${after === before ? '' : ` (+${after - before})`}`);
-  }
 }
 
 function requestCurrentCaptions(): void {
@@ -177,17 +175,15 @@ async function forceSubtitleReload(): Promise<void> {
 
   if (!isOn) {
     if (autoCcToggled) {
-      showStatusOverlay('AI Translate: CC off, already auto-toggled once');
       return;
     }
 
     autoCcToggled = true;
-    showStatusOverlay('AI Translate: opening YouTube CC to trigger captions');
+    suppressCcOffUntil = Date.now() + 3_000;
     button.click();
     return;
   }
 
-  showStatusOverlay('AI Translate: toggling YouTube CC to trigger captions');
   button.click();
   await new Promise((resolve) => window.setTimeout(resolve, 250));
   if (aiModeActive) button.click();
@@ -221,44 +217,9 @@ function isCcEnabled(): boolean {
 function createSession(settings: ExtensionSettings): void {
   session?.stop();
   renderer?.clear();
-  session = new YoutubeSubtitleSession(settings, createDebugTranslatorClient(createRuntimeTranslatorClient()));
+  session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient());
   renderer = new SubtitleOverlayRenderer();
   session.start();
-}
-
-function createDebugTranslatorClient(client: TranslatorClient): TranslatorClient {
-  return {
-    async translateSubtitle(input, signal) {
-      showStatusOverlay(`AI Translate: sending ${input.segments.length} segments to ${input.providerType}`);
-      const result = await client.translateSubtitle(input, signal);
-      if (!result.ok) {
-        showStatusOverlay(`AI Translate API error: ${result.error}`);
-        throw new Error(result.error);
-      }
-      showStatusOverlay(`AI Translate: API returned ${result.translations.length} translations`);
-      return result;
-    },
-    async translateAsrSubtitle(input, signal) {
-      showStatusOverlay(`AI Translate: sending ${input.segments.length} ASR segments to ${input.providerType}`);
-      const result = await client.translateAsrSubtitle(input, signal);
-      if (!result.ok) {
-        showStatusOverlay(`AI Translate API error: ${result.error}`);
-        throw new Error(result.error);
-      }
-      showStatusOverlay(`AI Translate: API returned ${result.cues.length} ASR cues`);
-      return result;
-    },
-  };
-}
-
-function shortUrl(url: string): string {
-  if (url.startsWith('simple-translator:')) return url;
-  try {
-    const parsedUrl = new URL(url, location.href);
-    return `${parsedUrl.pathname}?lang=${parsedUrl.searchParams.get('lang') ?? '-'}&fmt=${parsedUrl.searchParams.get('fmt') ?? '-'}`;
-  } catch {
-    return url.slice(0, 80);
-  }
 }
 
 function readVideoId(): string {
