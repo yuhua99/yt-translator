@@ -19,7 +19,7 @@ export function validateManualTranslations(
   const valid: ManualTranslationItem[] = []
 
   for (const item of translations) {
-    if (!requested.has(item.id) || seen.has(item.id)) {
+    if (typeof item.text !== 'string' || !requested.has(item.id) || seen.has(item.id)) {
       continue
     }
 

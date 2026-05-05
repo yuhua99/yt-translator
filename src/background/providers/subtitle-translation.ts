@@ -1,7 +1,7 @@
 import { getCachedTranslations, setCachedTranslations } from '../cache'
 import { createProvider } from './factory'
 import { getProviderConfig, getProviderSecret, type ProviderStores } from './storage'
-import { validateAsrCues, validateManualTranslations } from '../../youtube/translation-validation'
+import { missingManualTranslationIds, validateAsrCues, validateManualTranslations } from '../../youtube/translation-validation'
 import type { ProviderType } from './types'
 import type {
   TranslateAsrSubtitleMessage,
@@ -108,6 +108,11 @@ export async function translateSubtitleMessage(
     const sourceId = providerIdToSourceId.get(item.id)
     return sourceId ? [{ id: sourceId, text: item.text }] : []
   })
+
+  const missingIds = missingManualTranslationIds(requestedIds, translations)
+  if (missingIds.length > 0) {
+    console.warn(`[yt-translator] Missing translations for ids: ${missingIds.join(', ')}`)
+  }
 
   if (translations.length > 0) {
     await setCachedTranslations(stores.local, cacheKey, translations)
