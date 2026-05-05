@@ -21,6 +21,8 @@ export interface TranslateSubtitleInput {
   track: CaptionTrack
   segments: CaptionSegment[]
   targetLanguage: string
+  contextBefore?: Array<{ id: string; text: string }>
+  contextAfter?: Array<{ id: string; text: string }>
 }
 
 export function createRuntimeTranslatorClient(): TranslatorClient {
@@ -38,6 +40,8 @@ export function createRuntimeTranslatorClient(): TranslatorClient {
           startMs: segment.startMs,
           endMs: segment.endMs,
         })),
+        contextBefore: input.contextBefore,
+        contextAfter: input.contextAfter,
       })
     },
     translateAsrSubtitle(input: TranslateSubtitleInput): Promise<TranslateAsrSubtitleResult> {
@@ -52,6 +56,8 @@ export function createRuntimeTranslatorClient(): TranslatorClient {
           text: segment.text,
           startMs: segment.startMs,
         })),
+        contextBefore: input.contextBefore,
+        contextAfter: input.contextAfter,
       })
     },
   }

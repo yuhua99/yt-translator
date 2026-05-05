@@ -93,6 +93,8 @@ export async function translateSubtitleMessage(
     provider.translateManual({
       items: providerItems,
       targetLanguage: message.targetLanguage,
+      contextBefore: message.contextBefore,
+      contextAfter: message.contextAfter,
     }),
   )
 
@@ -128,6 +130,8 @@ export async function translateAsrSubtitleMessage(
     provider.translateAsr({
       segments: message.segments,
       targetLanguage: message.targetLanguage,
+      contextBefore: message.contextBefore,
+      contextAfter: message.contextAfter,
     }),
   )
 

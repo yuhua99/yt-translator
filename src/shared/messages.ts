@@ -23,6 +23,11 @@ export interface ProviderUsage {
   outputTokens?: number
 }
 
+export interface ContextCue {
+  id: string
+  text: string
+}
+
 export interface TranslateSubtitleMessage {
   type: 'TRANSLATE_SUBTITLE_AI_PROVIDER'
   providerType: ProviderType
@@ -35,6 +40,8 @@ export interface TranslateSubtitleMessage {
     endMs?: number
   }>
   targetLanguage: string
+  contextBefore?: ContextCue[]
+  contextAfter?: ContextCue[]
 }
 
 export interface TranslateSubtitleResult {
@@ -54,6 +61,8 @@ export interface TranslateAsrSubtitleMessage {
     text: string
   }>
   targetLanguage: string
+  contextBefore?: ContextCue[]
+  contextAfter?: ContextCue[]
 }
 
 export interface TranslateAsrSubtitleResult {

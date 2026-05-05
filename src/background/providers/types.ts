@@ -1,5 +1,5 @@
 import type { AsrCueItem, ManualTranslationItem } from '../../youtube/translation-validation'
-import type { ProviderUsage } from '../../shared/messages'
+import type { ContextCue, ProviderUsage } from '../../shared/messages'
 
 export type ProviderType = 'openai' | 'anthropic' | 'opencodeZen'
 
@@ -20,6 +20,8 @@ export interface ManualTranslateInput {
     endMs?: number
   }>
   targetLanguage: string
+  contextBefore?: ContextCue[]
+  contextAfter?: ContextCue[]
 }
 
 export interface ManualTranslateOutput {
@@ -34,6 +36,8 @@ export interface AsrTranslateInput {
     text: string
   }>
   targetLanguage: string
+  contextBefore?: ContextCue[]
+  contextAfter?: ContextCue[]
 }
 
 export interface AsrTranslateOutput {

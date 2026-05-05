@@ -107,10 +107,12 @@ export class YoutubeSubtitleSession {
     this.windowsInFlight.add(window.id)
 
     try {
+      const contextBefore = this.getContextCues(window, 'before', 2)
+      const contextAfter = this.getContextCues(window, 'after', 2)
       const translatedIds =
         this.mode === 'asr'
-          ? await this.translateManualSegments(mergeAsrSegments(segments), true)
-          : await this.translateManualSegments(segments, false)
+          ? await this.translateManualSegments(mergeAsrSegments(segments), true, contextBefore, contextAfter)
+          : await this.translateManualSegments(segments, false, contextBefore, contextAfter)
 
       for (const id of translatedIds) {
         this.translatedSegmentIds.add(id)
@@ -136,9 +138,27 @@ export class YoutubeSubtitleSession {
     }
   }
 
+  private getContextCues(
+    window: TranslationWindow,
+    side: 'before' | 'after',
+    maxCount: number,
+  ): Array<{ id: string; text: string }> {
+    const sorted = [...this.segments].sort((a, b) => a.startMs - b.startMs)
+
+    if (side === 'before') {
+      const before = sorted.filter((s) => s.startMs < window.startMs)
+      return before.slice(-maxCount).map((s) => ({ id: s.id, text: s.text }))
+    }
+
+    const after = sorted.filter((s) => s.startMs >= window.endMs)
+    return after.slice(0, maxCount).map((s) => ({ id: s.id, text: s.text }))
+  }
+
   private async translateManualSegments(
     segments: CaptionSegment[],
     extendForReading: boolean,
+    contextBefore?: Array<{ id: string; text: string }>,
+    contextAfter?: Array<{ id: string; text: string }>,
   ): Promise<string[]> {
     if (!this.track) {
       return []
@@ -151,6 +171,8 @@ export class YoutubeSubtitleSession {
         track: this.track,
         segments,
         targetLanguage: this.settings.targetLanguage,
+        contextBefore,
+        contextAfter,
       },
       this.abortController.signal,
     )
