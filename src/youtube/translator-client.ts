@@ -2,15 +2,17 @@ import type { CaptionSegment, CaptionTrack } from './caption-types'
 import type { ProviderType } from '../background/providers/types'
 import type { TranslateAsrSubtitleResult, TranslateSubtitleResult } from '../shared/messages'
 
+import type { TranslationError } from '../shared/messages'
+
 export interface TranslatorClient {
   translateSubtitle(
     input: TranslateSubtitleInput,
     signal: AbortSignal,
-  ): Promise<TranslateSubtitleResult | { ok: false; error: string }>
+  ): Promise<TranslateSubtitleResult | TranslationError>
   translateAsrSubtitle(
     input: TranslateSubtitleInput,
     signal: AbortSignal,
-  ): Promise<TranslateAsrSubtitleResult | { ok: false; error: string }>
+  ): Promise<TranslateAsrSubtitleResult | TranslationError>
 }
 
 export interface TranslateSubtitleInput {

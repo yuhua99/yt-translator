@@ -17,13 +17,16 @@ export class YoutubeSubtitleSession {
   mode?: CaptionMode
   segments: CaptionSegment[] = []
   translatedCues: TranslatedCue[] = []
-  inFlightWindows = new Set<string>()
-  completedWindows = new Set<string>()
-  failedWindows = new Set<string>()
+  windowsInFlight = new Set<string>()
+  windowsCompleted = new Set<string>()
+  windowsFailed = new Set<string>()
   abortController = new AbortController()
   translatedSegmentIds = new Set<string>()
-  onFatalError?: (error: string) => void
-  onWindowFailed?: (windowId: string, error: string) => void
+
+  /** Called when a fatal error (401/403) stops the session. */
+  fatalErrorHandler?: (error: string) => void
+  /** Called when a non-fatal window translation fails after all retries. */
+  windowFailedHandler?: (windowId: string, error: string) => void
 
   constructor(
     private readonly settings: ExtensionSettings,
@@ -36,7 +39,7 @@ export class YoutubeSubtitleSession {
 
   stop(): void {
     this.abortController.abort()
-    this.inFlightWindows.clear()
+    this.windowsInFlight.clear()
   }
 
   resetForNavigation(videoId: string): void {
@@ -47,8 +50,8 @@ export class YoutubeSubtitleSession {
     this.segments = []
     this.translatedCues = []
     this.translatedSegmentIds.clear()
-    this.completedWindows.clear()
-    this.failedWindows.clear()
+    this.windowsCompleted.clear()
+    this.windowsFailed.clear()
     this.start()
   }
 
@@ -65,9 +68,9 @@ export class YoutubeSubtitleSession {
     this.segments = inferSegmentEndTimes(parsed.segments)
     this.translatedCues = []
     this.translatedSegmentIds.clear()
-    this.inFlightWindows.clear()
-    this.completedWindows.clear()
-    this.failedWindows.clear()
+    this.windowsInFlight.clear()
+    this.windowsCompleted.clear()
+    this.windowsFailed.clear()
   }
 
   async ensureTranslations(currentTimeMs: number, ccEnabled: boolean): Promise<void> {
@@ -76,8 +79,8 @@ export class YoutubeSubtitleSession {
     }
 
     const windows = planTranslationWindows({
-      inFlightWindows: this.inFlightWindows,
-      completedWindows: this.completedWindows,
+      inFlightWindows: this.windowsInFlight,
+      completedWindows: this.windowsCompleted,
       ccEnabled,
       currentTimeMs,
     })
@@ -90,18 +93,18 @@ export class YoutubeSubtitleSession {
       return
     }
 
-    if (this.failedWindows.has(window.id)) {
+    if (this.windowsFailed.has(window.id)) {
       return
     }
 
     const segments = this.segmentsInWindow(window)
 
     if (segments.length === 0) {
-      this.completedWindows.add(window.id)
+      this.windowsCompleted.add(window.id)
       return
     }
 
-    this.inFlightWindows.add(window.id)
+    this.windowsInFlight.add(window.id)
 
     try {
       const translatedIds =
@@ -113,22 +116,23 @@ export class YoutubeSubtitleSession {
         this.translatedSegmentIds.add(id)
       }
 
-      this.completedWindows.add(window.id)
+      this.windowsCompleted.add(window.id)
     } catch (error) {
       if (this.abortController.signal.aborted) return
 
       const message = error instanceof Error ? error.message : String(error)
+      const fatal = (error as { fatal?: boolean }).fatal === true
 
-      if (/\b401\b|\b403\b/.test(message)) {
-        this.failedWindows.add(window.id)
-        this.onFatalError?.(message)
+      if (fatal) {
+        this.windowsFailed.add(window.id)
+        this.fatalErrorHandler?.(message)
         return
       }
 
-      this.failedWindows.add(window.id)
-      this.onWindowFailed?.(window.id, message)
+      this.windowsFailed.add(window.id)
+      this.windowFailedHandler?.(window.id, message)
     } finally {
-      this.inFlightWindows.delete(window.id)
+      this.windowsInFlight.delete(window.id)
     }
   }
 
@@ -152,7 +156,9 @@ export class YoutubeSubtitleSession {
     )
 
     if (!result.ok) {
-      throw new Error(result.error)
+      const error = new Error(result.error) as Error & { fatal?: boolean }
+      error.fatal = result.fatal
+      throw error
     }
 
     const translations = new Map(result.translations.map((item) => [item.id, item.text]))

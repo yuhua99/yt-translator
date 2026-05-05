@@ -242,7 +242,7 @@ function createSession(settings: ExtensionSettings): void {
   renderer?.clear()
   session = new YoutubeSubtitleSession(settings, createRuntimeTranslatorClient())
 
-  session.onFatalError = (error: string) => {
+  session.fatalErrorHandler = (error: string) => {
     showStatusOverlay(`AI Translate error: ${error}`)
     aiModeActive = false
     session?.stop()
@@ -250,7 +250,7 @@ function createSession(settings: ExtensionSettings): void {
     // Per spec: do not restore native captions on fatal error
   }
 
-  session.onWindowFailed = (_windowId: string, error: string) => {
+  session.windowFailedHandler = (_windowId: string, error: string) => {
     showStatusOverlay(`AI Translate: ${error}`)
   }
 

@@ -99,7 +99,7 @@ describe('YoutubeSubtitleSession', () => {
       },
     })
 
-    session.onWindowFailed = (_windowId, error) => {
+    session.windowFailedHandler = (_windowId, error) => {
       lastError = error
     }
 
@@ -119,17 +119,17 @@ describe('YoutubeSubtitleSession', () => {
       url: 'https://www.youtube.com/api/timedtext?v=video-1&lang=en',
       responseText: JSON.stringify({ events: [{ tStartMs: 1000, segs: [{ utf8: 'Hello' }] }] }),
     })
-    session.inFlightWindows.add('0-30000')
-    session.completedWindows.add('0-30000')
-    session.failedWindows.add('0-30000')
+    session.windowsInFlight.add('0-30000')
+    session.windowsCompleted.add('0-30000')
+    session.windowsFailed.add('0-30000')
 
     session.resetForNavigation('video-2')
 
     expect(session.videoId).toBe('video-2')
     expect(session.segments).toEqual([])
     expect(session.translatedCues).toEqual([])
-    expect(session.inFlightWindows.size).toBe(0)
-    expect(session.completedWindows.size).toBe(0)
-    expect(session.failedWindows.size).toBe(0)
+    expect(session.windowsInFlight.size).toBe(0)
+    expect(session.windowsCompleted.size).toBe(0)
+    expect(session.windowsFailed.size).toBe(0)
   })
 })

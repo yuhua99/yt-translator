@@ -65,17 +65,13 @@ export class OpenAiProvider implements AiProvider {
     prompt: string,
     options: CompletionOptions = {},
   ): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
-    const apiKey = this.secret.apiKey
-
-    if (!apiKey) {
+    if (!this.secret.apiKey) {
       throw new Error(`Missing API key for provider: ${this.config.type}`)
     }
 
-    const tryJsonObject = options.json !== false
-
-    if (tryJsonObject) {
+    if (options.json !== false) {
       try {
-        return await this.fetchAndParse(prompt, options, 'max_tokens')
+        return await this.fetchAndParse(prompt, options)
       } catch (error) {
         if (error instanceof SyntaxError || (error instanceof Error && /JSON|parse/i.test(error.message))) {
           // Fall through to retry without json_object
@@ -85,20 +81,14 @@ export class OpenAiProvider implements AiProvider {
       }
     }
 
-    return await this.fetchAndParse(
-      prompt,
-      { ...options, json: false },
-      'max_tokens',
-    )
+    return await this.fetchAndParse(prompt, { ...options, json: false })
   }
 
   private async fetchAndParse(
     prompt: string,
     options: CompletionOptions,
-    tokenLimitKey: 'max_tokens' | 'max_completion_tokens',
   ): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
-    const { responseText } = await this.fetchChatCompletion(prompt, options, tokenLimitKey)
-
+    const responseText = await this.fetchChatCompletion(prompt, options)
     const json = JSON.parse(responseText) as OpenAiResponse
     const content = extractOpenAiContent(json)
 
@@ -122,8 +112,7 @@ export class OpenAiProvider implements AiProvider {
   private async fetchChatCompletion(
     prompt: string,
     options: CompletionOptions,
-    tokenLimitKey: 'max_tokens' | 'max_completion_tokens',
-  ): Promise<{ responseText: string }> {
+  ): Promise<string> {
     const response = await fetch(`${this.defaultBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -133,7 +122,7 @@ export class OpenAiProvider implements AiProvider {
       body: JSON.stringify({
         model: this.config.model,
         temperature: 0,
-        ...(options.maxTokens ? { [tokenLimitKey]: options.maxTokens } : {}),
+        ...(options.maxTokens ? { max_completion_tokens: options.maxTokens } : {}),
         ...(options.json === false ? {} : { response_format: { type: 'json_object' } }),
         ...this.extraChatCompletionBody(),
         messages: [
@@ -149,15 +138,11 @@ export class OpenAiProvider implements AiProvider {
 
     const responseText = await response.text()
 
-    if (response.ok) {
-      return { responseText }
+    if (!response.ok) {
+      throw new Error(`${this.providerLabel} request failed: ${response.status} ${responseText}`)
     }
 
-    if (tokenLimitKey === 'max_tokens' && responseText.includes("'max_tokens' is not supported")) {
-      return this.fetchChatCompletion(prompt, options, 'max_completion_tokens')
-    }
-
-    throw new Error(`${this.providerLabel} request failed: ${response.status} ${responseText}`)
+    return responseText
   }
 }
 

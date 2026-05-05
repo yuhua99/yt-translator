@@ -82,40 +82,8 @@ describe('OpenAiProvider', () => {
       text: 'OK',
       usage: { inputTokens: 4, outputTokens: 1 },
     })
-    expect(requestBody?.max_tokens).toBe(40)
+    expect(requestBody?.max_completion_tokens).toBe(40)
     expect(requestBody).not.toHaveProperty('response_format')
-  })
-
-  test('retries with max_completion_tokens when model rejects max_tokens', async () => {
-    const bodies: Array<Record<string, unknown>> = []
-    globalThis.fetch = async (_input, init) => {
-      const body = JSON.parse(String(init?.body)) as Record<string, unknown>
-      bodies.push(body)
-
-      if ('max_tokens' in body) {
-        return Response.json(
-          {
-            error: {
-              message:
-                "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
-            },
-          },
-          { status: 400 },
-        )
-      }
-
-      return Response.json({ choices: [{ message: { content: 'OK' } }] })
-    }
-
-    const provider = new OpenAiProvider({ type: 'openai', model: 'gpt-5' }, { apiKey: 'key' })
-
-    await expect(provider.testConnection()).resolves.toEqual({
-      ok: true,
-      text: 'OK',
-      usage: { inputTokens: undefined, outputTokens: undefined },
-    })
-    expect(bodies[0]?.max_tokens).toBe(40)
-    expect(bodies[1]?.max_completion_tokens).toBe(40)
   })
 
   test('sends chat completion request and parses manual translations', async () => {
