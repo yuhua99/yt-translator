@@ -82,10 +82,17 @@ export type ProviderConfigResponse =
   | { ok: true; config: ProviderConfig }
   | { ok: false; error: string }
 export type ProviderTestResponse = ProviderTestOutput | { ok: false; error: string }
+export interface TranslationError {
+  ok: false
+  error: string
+  fatal?: boolean
+  retried?: boolean
+}
+
 export type TranslationResponse =
   | TranslateSubtitleResult
   | TranslateAsrSubtitleResult
-  | { ok: false; error: string }
+  | TranslationError
 export type ExtensionResponse =
   | SettingsResponse
   | MessageResponse

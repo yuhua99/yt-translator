@@ -71,7 +71,33 @@ export class OpenAiProvider implements AiProvider {
       throw new Error(`Missing API key for provider: ${this.config.type}`)
     }
 
-    const { responseText } = await this.fetchChatCompletion(prompt, options, 'max_tokens')
+    const tryJsonObject = options.json !== false
+
+    if (tryJsonObject) {
+      try {
+        return await this.fetchAndParse(prompt, options, 'max_tokens')
+      } catch (error) {
+        if (error instanceof SyntaxError || (error instanceof Error && /JSON|parse/i.test(error.message))) {
+          // Fall through to retry without json_object
+        } else {
+          throw error
+        }
+      }
+    }
+
+    return await this.fetchAndParse(
+      prompt,
+      { ...options, json: false },
+      'max_tokens',
+    )
+  }
+
+  private async fetchAndParse(
+    prompt: string,
+    options: CompletionOptions,
+    tokenLimitKey: 'max_tokens' | 'max_completion_tokens',
+  ): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
+    const { responseText } = await this.fetchChatCompletion(prompt, options, tokenLimitKey)
 
     const json = JSON.parse(responseText) as OpenAiResponse
     const content = extractOpenAiContent(json)

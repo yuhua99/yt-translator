@@ -19,8 +19,11 @@ export class YoutubeSubtitleSession {
   translatedCues: TranslatedCue[] = []
   inFlightWindows = new Set<string>()
   completedWindows = new Set<string>()
+  failedWindows = new Set<string>()
   abortController = new AbortController()
   translatedSegmentIds = new Set<string>()
+  onFatalError?: (error: string) => void
+  onWindowFailed?: (windowId: string, error: string) => void
 
   constructor(
     private readonly settings: ExtensionSettings,
@@ -45,6 +48,7 @@ export class YoutubeSubtitleSession {
     this.translatedCues = []
     this.translatedSegmentIds.clear()
     this.completedWindows.clear()
+    this.failedWindows.clear()
     this.start()
   }
 
@@ -63,6 +67,7 @@ export class YoutubeSubtitleSession {
     this.translatedSegmentIds.clear()
     this.inFlightWindows.clear()
     this.completedWindows.clear()
+    this.failedWindows.clear()
   }
 
   async ensureTranslations(currentTimeMs: number, ccEnabled: boolean): Promise<void> {
@@ -82,6 +87,10 @@ export class YoutubeSubtitleSession {
 
   private async translateWindow(window: TranslationWindow): Promise<void> {
     if (!this.track) {
+      return
+    }
+
+    if (this.failedWindows.has(window.id)) {
       return
     }
 
@@ -106,9 +115,18 @@ export class YoutubeSubtitleSession {
 
       this.completedWindows.add(window.id)
     } catch (error) {
-      if (!this.abortController.signal.aborted) {
-        console.warn('Simple Translator translation failed:', error)
+      if (this.abortController.signal.aborted) return
+
+      const message = error instanceof Error ? error.message : String(error)
+
+      if (/\b401\b|\b403\b/.test(message)) {
+        this.failedWindows.add(window.id)
+        this.onFatalError?.(message)
+        return
       }
+
+      this.failedWindows.add(window.id)
+      this.onWindowFailed?.(window.id, message)
     } finally {
       this.inFlightWindows.delete(window.id)
     }

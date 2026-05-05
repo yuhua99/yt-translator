@@ -1,4 +1,4 @@
-import { describe, expect, spyOn, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { YoutubeSubtitleSession } from '../../src/youtube/session'
 import type { TranslatorClient } from '../../src/youtube/translator-client'
 import type { ExtensionSettings, TranslateSubtitleResult } from '../../src/shared/messages'
@@ -87,8 +87,9 @@ describe('YoutubeSubtitleSession', () => {
     expect(client.calls).toHaveLength(1)
   })
 
-  test('reports translation errors without throwing', async () => {
-    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+  test('reports translation errors via onWindowFailed callback', async () => {
+    let lastError = ''
+
     const session = new YoutubeSubtitleSession(settings, {
       async translateSubtitle() {
         throw new Error('bad api key')
@@ -98,14 +99,17 @@ describe('YoutubeSubtitleSession', () => {
       },
     })
 
+    session.onWindowFailed = (_windowId, error) => {
+      lastError = error
+    }
+
     session.handleCapturedCaptions({
       url: 'https://www.youtube.com/api/timedtext?v=video-1&lang=en',
       responseText: JSON.stringify({ events: [{ tStartMs: 1000, segs: [{ utf8: 'Hello' }] }] }),
     })
 
     await expect(session.ensureTranslations(1000, true)).resolves.toBeUndefined()
-    expect(warn).toHaveBeenCalled()
-    warn.mockRestore()
+    expect(lastError).toBe('bad api key')
   })
 
   test('resetForNavigation clears state and aborts in-flight windows', () => {
@@ -117,6 +121,7 @@ describe('YoutubeSubtitleSession', () => {
     })
     session.inFlightWindows.add('0-30000')
     session.completedWindows.add('0-30000')
+    session.failedWindows.add('0-30000')
 
     session.resetForNavigation('video-2')
 
@@ -125,5 +130,6 @@ describe('YoutubeSubtitleSession', () => {
     expect(session.translatedCues).toEqual([])
     expect(session.inFlightWindows.size).toBe(0)
     expect(session.completedWindows.size).toBe(0)
+    expect(session.failedWindows.size).toBe(0)
   })
 })

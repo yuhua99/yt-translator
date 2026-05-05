@@ -8,12 +8,72 @@ import type {
   TranslateAsrSubtitleResult,
   TranslateSubtitleMessage,
   TranslateSubtitleResult,
+  TranslationError,
 } from '../../shared/messages'
+
+const MAX_RETRIES = 2
+const RETRY_BASE_MS = 1_000
+
+function isFatalError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /\b401\b|\b403\b/.test(message)
+}
+
+function isRetryableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /\b429\b|\b5\d{2}\b|network|fetch|timeout|JSON|parse/i.test(message)
+}
+
+function backoffMs(attempt: number): number {
+  return RETRY_BASE_MS * Math.pow(2, attempt)
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+): Promise<{ ok: true; data: T } | TranslationError> {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      const data = await fn()
+      return { ok: true, data }
+    } catch (error) {
+      lastError = error
+
+      if (isFatalError(error)) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+          fatal: true,
+          retried: attempt > 0,
+        }
+      }
+
+      if (!isRetryableError(error) || attempt >= MAX_RETRIES) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+          fatal: false,
+          retried: attempt > 0,
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, backoffMs(attempt)))
+    }
+  }
+
+  return {
+    ok: false,
+    error: lastError instanceof Error ? lastError.message : String(lastError),
+    fatal: false,
+    retried: true,
+  }
+}
 
 export async function translateSubtitleMessage(
   message: TranslateSubtitleMessage,
   stores: ProviderStores,
-): Promise<TranslateSubtitleResult> {
+): Promise<TranslateSubtitleResult | TranslationError> {
   const providerConfig = await getProviderConfig(stores.sync, message.providerType)
   const cacheKey = createWindowCacheKey(message, providerConfig.model)
   const cached = await getCachedTranslations(stores.local, cacheKey)
@@ -28,13 +88,19 @@ export async function translateSubtitleMessage(
   const providerIdToSourceId = new Map(
     providerItems.map((item, index) => [item.id, message.items[index]?.id]),
   )
-  const result = await provider.translateManual({
-    items: providerItems,
-    targetLanguage: message.targetLanguage,
-  })
+
+  const result = await withRetry(() =>
+    provider.translateManual({
+      items: providerItems,
+      targetLanguage: message.targetLanguage,
+    }),
+  )
+
+  if (!result.ok) return result
+
   const providerTranslations = validateManualTranslations(
     providerItems.map((item) => item.id),
-    result.translations,
+    result.data.translations,
   )
   const translations = providerTranslations.flatMap((item) => {
     const sourceId = providerIdToSourceId.get(item.id)
@@ -48,25 +114,31 @@ export async function translateSubtitleMessage(
   return {
     ok: true,
     translations,
-    usage: result.usage,
+    usage: result.data.usage,
   }
 }
 
 export async function translateAsrSubtitleMessage(
   message: TranslateAsrSubtitleMessage,
   stores: ProviderStores,
-): Promise<TranslateAsrSubtitleResult> {
+): Promise<TranslateAsrSubtitleResult | TranslationError> {
   const provider = await resolveProvider(message.providerType, stores)
-  const result = await provider.translateAsr({
-    segments: message.segments,
-    targetLanguage: message.targetLanguage,
-  })
+
+  const result = await withRetry(() =>
+    provider.translateAsr({
+      segments: message.segments,
+      targetLanguage: message.targetLanguage,
+    }),
+  )
+
+  if (!result.ok) return result
+
   const knownSegmentIds = message.segments.map((segment) => segment.id)
 
   return {
     ok: true,
-    cues: validateAsrCues(knownSegmentIds, result.cues),
-    usage: result.usage,
+    cues: validateAsrCues(knownSegmentIds, result.data.cues),
+    usage: result.data.usage,
   }
 }
 
