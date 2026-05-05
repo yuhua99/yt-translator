@@ -8,12 +8,7 @@ import {
   type SettingsResponse,
 } from '../shared/messages'
 import type { ProviderConfig, ProviderSecret, ProviderType } from '../background/providers/types'
-
-const PROVIDER_TYPES: Array<{ value: ProviderType; label: string }> = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic Claude' },
-  { value: 'opencodeZen', label: 'opencode Zen' },
-]
+import { ALL_PROVIDER_TYPES, getProviderLabel, getProviderModels } from '../shared/providers'
 
 const TARGET_LANGUAGES: Array<{ value: string; label: string }> = [
   { value: 'zh-TW', label: '繁體中文' },
@@ -27,45 +22,6 @@ const TARGET_LANGUAGES: Array<{ value: string; label: string }> = [
 ]
 
 const CUSTOM_MODEL_VALUE = '__custom__'
-
-const MODEL_PRESETS: Record<ProviderType, string[]> = {
-  openai: [
-    'gpt-5.4-mini',
-    'gpt-5.4-nano',
-    'gpt-5.4',
-    'gpt-5.5',
-    'gpt-5.2',
-    'gpt-5.1',
-    'gpt-4.1-mini',
-    'gpt-4.1',
-    'gpt-4o-mini',
-  ],
-  anthropic: [
-    'claude-sonnet-4-6',
-    'claude-haiku-4-5',
-    'claude-opus-4-7',
-    'claude-opus-4-6',
-    'claude-sonnet-4-5',
-    'claude-opus-4-5',
-    'claude-opus-4-1',
-  ],
-  opencodeZen: [
-    'minimax-m2.7',
-    'minimax-m2.5',
-    'kimi-k2.6',
-    'kimi-k2.5',
-    'glm-5.1',
-    'glm-5',
-    'deepseek-v4-pro',
-    'deepseek-v4-flash',
-    'qwen3.6-plus',
-    'qwen3.5-plus',
-    'mimo-v2-pro',
-    'mimo-v2-omni',
-    'mimo-v2.5-pro',
-    'mimo-v2.5',
-  ],
-}
 
 function requiredElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector)
@@ -104,7 +60,7 @@ function getSelectedModel(): string {
 }
 
 function renderModelPresets(providerType: ProviderType, selected?: string): void {
-  const presets = MODEL_PRESETS[providerType]
+  const presets = getProviderModels(providerType)
   const isCustom = Boolean(selected && !presets.includes(selected))
   const options = presets.map((model) => {
     const option = document.createElement('option')
@@ -130,10 +86,10 @@ function syncCustomModelVisibility(): void {
 }
 
 function renderProviderTypes(selected: ProviderType): void {
-  const options = PROVIDER_TYPES.map(({ value, label }) => {
+  const options = ALL_PROVIDER_TYPES.map((value) => {
     const option = document.createElement('option')
     option.value = value
-    option.textContent = label
+    option.textContent = getProviderLabel(value)
     option.selected = value === selected
     return option
   })

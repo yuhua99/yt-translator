@@ -1,4 +1,5 @@
 import type { ProviderConfig, ProviderSecret, ProviderType } from './types'
+import { getDefaultProviderConfig } from '../../shared/providers'
 
 export interface ProviderStorageArea {
   get(key: string): Promise<Record<string, unknown>>
@@ -13,15 +14,7 @@ export interface ProviderStores {
 export const PROVIDER_CONFIGS_KEY = 'providerConfigs'
 export const PROVIDER_SECRETS_KEY = 'providerSecrets'
 
-const DEFAULT_PROVIDER_CONFIGS: Record<ProviderType, ProviderConfig> = {
-  openai: { type: 'openai', model: 'gpt-5.4-mini' },
-  anthropic: { type: 'anthropic', model: 'claude-haiku-4-5' },
-  opencodeZen: { type: 'opencodeZen', model: 'deepseek-v4-flash' },
-}
-
-export function getDefaultProviderConfig(providerType: ProviderType): ProviderConfig {
-  return DEFAULT_PROVIDER_CONFIGS[providerType]
-}
+export { getDefaultProviderConfig }
 
 export async function getProviderConfig(
   storage: ProviderStorageArea,
