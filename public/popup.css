@@ -1,6 +1,10 @@
+:root {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  min-width: 260px;
+  min-width: 340px;
   color: #f4f4f5;
   background: #111827;
   font:
@@ -14,15 +18,46 @@ main {
   padding: 16px;
 }
 
-h1 {
+h1,
+h2 {
   margin: 0;
+}
+
+h1 {
   font-size: 16px;
+}
+
+h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+section {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .toggle-row {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: 13px;
+  color: #f4f4f5;
 }
 
 input[type='checkbox'] {
@@ -30,18 +65,43 @@ input[type='checkbox'] {
   height: 18px;
 }
 
+button,
+input,
+select {
+  font: inherit;
+}
+
+input,
+select {
+  padding: 6px 8px;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #f4f4f5;
+}
+
+input:focus,
+select:focus {
+  outline: 1px solid #3b82f6;
+}
+
 button {
   border: 0;
   border-radius: 8px;
-  padding: 9px 12px;
+  padding: 8px 12px;
   color: #111827;
   background: #f9fafb;
   cursor: pointer;
-  font: inherit;
+  justify-self: start;
 }
 
 button:hover {
   background: #e5e7eb;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 #status {

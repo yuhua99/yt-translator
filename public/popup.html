@@ -9,11 +9,41 @@
   <body>
     <main>
       <h1>Simple Translator</h1>
+
       <label class="toggle-row">
         <input id="enabled" type="checkbox" />
         <span>Enable YouTube AI subtitles</span>
       </label>
-      <button id="settings" type="button">Settings</button>
+
+      <section>
+        <h2>Provider</h2>
+        <label>
+          Active provider
+          <select id="provider-type"></select>
+        </label>
+        <label>
+          API key
+          <input id="provider-api-key" type="password" autocomplete="off" placeholder="Enter to change key" />
+        </label>
+        <label>
+          Model
+          <select id="provider-model-preset"></select>
+        </label>
+        <label id="custom-model-row" hidden>
+          Custom model
+          <input id="provider-model" type="text" placeholder="Model id" />
+        </label>
+      </section>
+
+      <section>
+        <h2>Translation</h2>
+        <label>
+          Target language
+          <select id="target-language"></select>
+        </label>
+      </section>
+
+      <button id="save" type="button">Save</button>
       <p id="status" role="status"></p>
     </main>
     <script type="module" src="popup.js"></script>

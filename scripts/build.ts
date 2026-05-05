@@ -23,7 +23,6 @@ async function buildOnce(): Promise<void> {
     entrypoints: [
       'src/background/index.ts',
       'src/content/index.ts',
-      'src/options/index.ts',
       'src/popup/index.ts',
       'src/youtube/main-world-capture.ts',
     ],

@@ -1,9 +1,71 @@
-import type {
-  ExtensionMessage,
-  ExtensionResponse,
-  ExtensionSettings,
-  SettingsResponse,
+import {
+  DEFAULT_SETTINGS,
+  type ExtensionMessage,
+  type ExtensionResponse,
+  type ExtensionSettings,
+  type ProviderConfigResponse,
+  type ProviderTestResponse,
+  type SettingsResponse,
 } from '../shared/messages'
+import type { ProviderConfig, ProviderSecret, ProviderType } from '../background/providers/types'
+
+const PROVIDER_TYPES: Array<{ value: ProviderType; label: string }> = [
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'anthropic', label: 'Anthropic Claude' },
+  { value: 'opencodeZen', label: 'opencode Zen' },
+]
+
+const TARGET_LANGUAGES: Array<{ value: string; label: string }> = [
+  { value: 'zh-TW', label: '繁體中文' },
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+  { value: 'ko', label: '한국어' },
+  { value: 'es', label: 'Español' },
+  { value: 'fr', label: 'Français' },
+  { value: 'de', label: 'Deutsch' },
+]
+
+const CUSTOM_MODEL_VALUE = '__custom__'
+
+const MODEL_PRESETS: Record<ProviderType, string[]> = {
+  openai: [
+    'gpt-5.4-mini',
+    'gpt-5.4-nano',
+    'gpt-5.4',
+    'gpt-5.5',
+    'gpt-5.2',
+    'gpt-5.1',
+    'gpt-4.1-mini',
+    'gpt-4.1',
+    'gpt-4o-mini',
+  ],
+  anthropic: [
+    'claude-sonnet-4-6',
+    'claude-haiku-4-5',
+    'claude-opus-4-7',
+    'claude-opus-4-6',
+    'claude-sonnet-4-5',
+    'claude-opus-4-5',
+    'claude-opus-4-1',
+  ],
+  opencodeZen: [
+    'minimax-m2.7',
+    'minimax-m2.5',
+    'kimi-k2.6',
+    'kimi-k2.5',
+    'glm-5.1',
+    'glm-5',
+    'deepseek-v4-pro',
+    'deepseek-v4-flash',
+    'qwen3.6-plus',
+    'qwen3.5-plus',
+    'mimo-v2-pro',
+    'mimo-v2-omni',
+    'mimo-v2.5-pro',
+    'mimo-v2.5',
+  ],
+}
 
 function requiredElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector)
@@ -12,9 +74,17 @@ function requiredElement<T extends Element>(selector: string): T {
 }
 
 const enabledInput = requiredElement<HTMLInputElement>('#enabled')
-const settingsButton = requiredElement<HTMLButtonElement>('#settings')
+const targetLanguageInput = requiredElement<HTMLSelectElement>('#target-language')
+const providerTypeInput = requiredElement<HTMLSelectElement>('#provider-type')
+const providerModelPresetInput = requiredElement<HTMLSelectElement>('#provider-model-preset')
+const customModelRow = requiredElement<HTMLElement>('#custom-model-row')
+const providerModelInput = requiredElement<HTMLInputElement>('#provider-model')
+const providerApiKeyInput = requiredElement<HTMLInputElement>('#provider-api-key')
+const saveButton = requiredElement<HTMLButtonElement>('#save')
 const status = requiredElement<HTMLParagraphElement>('#status')
-let currentSettings: ExtensionSettings | undefined
+let currentSettings: ExtensionSettings = DEFAULT_SETTINGS
+let savedModel = ''
+let savedApiKey = ''
 
 function sendMessage<TResponse extends ExtensionResponse>(
   message: ExtensionMessage,
@@ -22,21 +92,108 @@ function sendMessage<TResponse extends ExtensionResponse>(
   return chrome.runtime.sendMessage(message)
 }
 
+function getProviderType(): ProviderType {
+  return providerTypeInput.value as ProviderType
+}
+
+function getSelectedModel(): string {
+  if (providerModelPresetInput.value === CUSTOM_MODEL_VALUE) {
+    return providerModelInput.value.trim()
+  }
+  return providerModelPresetInput.value
+}
+
+function renderModelPresets(providerType: ProviderType, selected?: string): void {
+  const presets = MODEL_PRESETS[providerType]
+  const isCustom = Boolean(selected && !presets.includes(selected))
+  const options = presets.map((model) => {
+    const option = document.createElement('option')
+    option.value = model
+    option.textContent = model
+    option.selected = model === selected
+    return option
+  })
+  const customOption = document.createElement('option')
+  customOption.value = CUSTOM_MODEL_VALUE
+  customOption.textContent = 'Custom model'
+  customOption.selected = isCustom
+
+  providerModelPresetInput.replaceChildren(...options, customOption)
+  providerModelInput.value = isCustom && selected ? selected : ''
+  syncCustomModelVisibility()
+}
+
+function syncCustomModelVisibility(): void {
+  const isCustom = providerModelPresetInput.value === CUSTOM_MODEL_VALUE
+  customModelRow.hidden = !isCustom
+  providerModelInput.required = isCustom
+}
+
+function renderProviderTypes(selected: ProviderType): void {
+  const options = PROVIDER_TYPES.map(({ value, label }) => {
+    const option = document.createElement('option')
+    option.value = value
+    option.textContent = label
+    option.selected = value === selected
+    return option
+  })
+  providerTypeInput.replaceChildren(...options)
+}
+
+function renderTargetLanguages(selected: string): void {
+  const options = TARGET_LANGUAGES.map(({ value, label }) => {
+    const option = document.createElement('option')
+    option.value = value
+    option.textContent = label
+    option.selected = value === selected
+    return option
+  })
+  targetLanguageInput.replaceChildren(...options)
+}
+
+function updateSaveRequired(): void {
+  const dirty =
+    targetLanguageInput.value !== currentSettings.targetLanguage ||
+    getProviderType() !== currentSettings.providerType ||
+    getSelectedModel() !== savedModel ||
+    providerApiKeyInput.value.trim() !== savedApiKey
+  saveButton.disabled = !dirty
+}
+
+function renderSettings(settings: ExtensionSettings): void {
+  currentSettings = settings
+  enabledInput.checked = settings.enabled
+  renderTargetLanguages(settings.targetLanguage)
+  renderProviderTypes(settings.providerType)
+  renderModelPresets(settings.providerType)
+}
+
+function renderProviderConfig(response: ProviderConfigResponse): void {
+  if (!response.ok) return
+  savedModel = response.config.model
+  renderProviderTypes(response.config.type)
+  renderModelPresets(response.config.type, response.config.model)
+  updateSaveRequired()  // called once, after model is known
+}
+
 async function loadSettings(): Promise<void> {
   const response = await sendMessage<SettingsResponse>({ type: 'GET_SETTINGS' })
   if (!response.ok) {
+    renderSettings(DEFAULT_SETTINGS)
     status.textContent = response.error
     return
   }
 
-  currentSettings = response.settings
-  enabledInput.checked = response.settings.enabled
-  status.textContent = response.settings.enabled ? 'Enabled' : 'Disabled'
+  renderSettings(response.settings)
+  renderProviderConfig(
+    await sendMessage<ProviderConfigResponse>({
+      type: 'GET_PROVIDER_CONFIG',
+      providerType: response.settings.providerType,
+    }),
+  )
 }
 
 async function saveEnabled(enabled: boolean): Promise<void> {
-  if (!currentSettings) return
-
   enabledInput.disabled = true
   const settings = { ...currentSettings, enabled }
   const response = await sendMessage<SettingsResponse>({ type: 'SET_SETTINGS', settings })
@@ -49,15 +206,96 @@ async function saveEnabled(enabled: boolean): Promise<void> {
   }
 
   currentSettings = response.settings
-  status.textContent = enabled ? 'Enabled' : 'Disabled'
+}
+
+async function saveSettings(): Promise<void> {
+  saveButton.disabled = true
+  status.textContent = 'Testing provider...'
+
+  // snapshot form values so in-flight edits don't leak into saves
+  const providerType = getProviderType()
+  const model = getSelectedModel()
+  const apiKey = providerApiKeyInput.value.trim()
+  const config: ProviderConfig = { type: providerType, model }
+  const secret: ProviderSecret = { apiKey: apiKey || undefined }
+
+  try {
+    const testResponse = await sendMessage<ProviderTestResponse>({
+      type: 'TEST_PROVIDER',
+      config,
+      secret,
+    })
+
+    if (!testResponse.ok) {
+      status.textContent = testResponse.error
+      return
+    }
+
+    const settings: ExtensionSettings = {
+      ...currentSettings,
+      targetLanguage: targetLanguageInput.value,
+      providerType,
+    }
+
+    const settingsResponse = await sendMessage<SettingsResponse>({ type: 'SET_SETTINGS', settings })
+    if (!settingsResponse.ok) {
+      status.textContent = settingsResponse.error
+      return
+    }
+
+    const configResponse = await sendMessage({
+      type: 'SET_PROVIDER_CONFIG',
+      config,
+    })
+    if (!configResponse.ok) {
+      status.textContent = configResponse.error
+      return
+    }
+
+    if (secret.apiKey) {
+      const secretResponse = await sendMessage({
+        type: 'SET_PROVIDER_SECRET',
+        providerType,
+        secret,
+      })
+      if (!secretResponse.ok) {
+        status.textContent = secretResponse.error
+        return
+      }
+    }
+
+    currentSettings = settings
+    savedModel = model
+    savedApiKey = apiKey
+    status.textContent = 'Saved'
+    updateSaveRequired()
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : String(error)
+  } finally {
+    saveButton.disabled = false
+  }
 }
 
 enabledInput.addEventListener('change', () => {
   void saveEnabled(enabledInput.checked)
 })
 
-settingsButton.addEventListener('click', () => {
-  chrome.runtime.openOptionsPage()
+providerTypeInput.addEventListener('change', () => {
+  renderModelPresets(getProviderType())
+  updateSaveRequired()
+})
+
+providerModelPresetInput.addEventListener('change', () => {
+  syncCustomModelVisibility()
+  updateSaveRequired()
+})
+
+for (const input of [providerApiKeyInput, providerModelInput, targetLanguageInput]) {
+  input.addEventListener('input', updateSaveRequired)
+}
+
+saveButton.addEventListener('click', () => {
+  void saveSettings()
 })
 
 void loadSettings()
