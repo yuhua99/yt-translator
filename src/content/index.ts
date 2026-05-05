@@ -173,9 +173,10 @@ async function scheduleCurrentWindow(video = document.querySelector('video')): P
   }
 
   const currentTimeMs = video.currentTime * 1000
+  const currentSession = session
   hideNativeCaptions()
-  await session.ensureTranslations(currentTimeMs, true)
-  renderer?.render(session.translatedCues, currentTimeMs)
+  await currentSession.ensureTranslations(currentTimeMs, true)
+  renderer?.render(currentSession.translatedCues, currentTimeMs)
 }
 
 function requestCurrentCaptions(): void {
