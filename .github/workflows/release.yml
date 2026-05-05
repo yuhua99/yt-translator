@@ -21,10 +21,13 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Package
+        run: cd dist && zip -r ../extension.zip .
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: extension.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
