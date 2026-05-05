@@ -1,21 +1,30 @@
-import { parseJsonObject } from './json';
-import { createAsrPrompt, createManualPrompt } from './prompts';
-import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput, ProviderConfig, ProviderSecret, ProviderTestOutput } from './types';
+import { parseJsonObject } from './json'
+import { createAsrPrompt, createManualPrompt } from './prompts'
+import type {
+  AiProvider,
+  AsrTranslateInput,
+  AsrTranslateOutput,
+  ManualTranslateInput,
+  ManualTranslateOutput,
+  ProviderConfig,
+  ProviderSecret,
+  ProviderTestOutput,
+} from './types'
 
 interface OpenAiResponse {
-  choices?: Array<{ message?: { content?: string | Array<{ text?: string; type?: string }> } }>;
-  output_text?: string;
+  choices?: Array<{ message?: { content?: string | Array<{ text?: string; type?: string }> } }>
+  output_text?: string
   usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-  };
+    prompt_tokens?: number
+    completion_tokens?: number
+  }
 }
 
 interface CompletionOptions {
-  maxTokens?: number;
-  json?: boolean;
-  system?: string;
-  allowEmptyContent?: boolean;
+  maxTokens?: number
+  json?: boolean
+  system?: string
+  allowEmptyContent?: boolean
 }
 
 export class OpenAiProvider implements AiProvider {
@@ -27,15 +36,15 @@ export class OpenAiProvider implements AiProvider {
   ) {}
 
   async translateManual(input: ManualTranslateInput): Promise<ManualTranslateOutput> {
-    const response = await this.complete(createManualPrompt(input));
-    const parsed = parseJsonObject<ManualTranslateOutput>(response.content);
-    return { ...parsed, usage: response.usage };
+    const response = await this.complete(createManualPrompt(input))
+    const parsed = parseJsonObject<ManualTranslateOutput>(response.content)
+    return { ...parsed, usage: response.usage }
   }
 
   async translateAsr(input: AsrTranslateInput): Promise<AsrTranslateOutput> {
-    const response = await this.complete(createAsrPrompt(input));
-    const parsed = parseJsonObject<AsrTranslateOutput>(response.content);
-    return { ...parsed, usage: response.usage };
+    const response = await this.complete(createAsrPrompt(input))
+    const parsed = parseJsonObject<AsrTranslateOutput>(response.content)
+    return { ...parsed, usage: response.usage }
   }
 
   async testConnection(): Promise<ProviderTestOutput> {
@@ -44,28 +53,31 @@ export class OpenAiProvider implements AiProvider {
       json: false,
       system: 'Reply exactly: OK',
       allowEmptyContent: false,
-    });
-    const text = response.content.trim();
+    })
+    const text = response.content.trim()
     if (text !== 'OK') {
-      throw new Error(`Provider test failed: expected OK, got ${text}`);
+      throw new Error(`Provider test failed: expected OK, got ${text}`)
     }
-    return { ok: true, text, usage: response.usage };
+    return { ok: true, text, usage: response.usage }
   }
 
-  private async complete(prompt: string, options: CompletionOptions = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
-    const apiKey = this.secret.apiKey;
+  private async complete(
+    prompt: string,
+    options: CompletionOptions = {},
+  ): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
+    const apiKey = this.secret.apiKey
 
     if (!apiKey) {
-      throw new Error(`Missing API key for provider: ${this.config.type}`);
+      throw new Error(`Missing API key for provider: ${this.config.type}`)
     }
 
-    const { responseText } = await this.fetchChatCompletion(prompt, options, 'max_tokens');
+    const { responseText } = await this.fetchChatCompletion(prompt, options, 'max_tokens')
 
-    const json = JSON.parse(responseText) as OpenAiResponse;
-    const content = extractOpenAiContent(json);
+    const json = JSON.parse(responseText) as OpenAiResponse
+    const content = extractOpenAiContent(json)
 
     if (!content && !options.allowEmptyContent) {
-      throw new Error(`OpenAI response missing message content: ${responseText.slice(0, 500)}`);
+      throw new Error(`OpenAI response missing message content: ${responseText.slice(0, 500)}`)
     }
 
     return {
@@ -74,11 +86,11 @@ export class OpenAiProvider implements AiProvider {
         inputTokens: json.usage?.prompt_tokens,
         outputTokens: json.usage?.completion_tokens,
       },
-    };
+    }
   }
 
   protected extraChatCompletionBody(): Record<string, unknown> {
-    return {};
+    return {}
   }
 
   private async fetchChatCompletion(
@@ -89,7 +101,7 @@ export class OpenAiProvider implements AiProvider {
     const response = await fetch(`${this.defaultBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
-        'authorization': `Bearer ${this.secret.apiKey}`,
+        authorization: `Bearer ${this.secret.apiKey}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
@@ -99,40 +111,44 @@ export class OpenAiProvider implements AiProvider {
         ...(options.json === false ? {} : { response_format: { type: 'json_object' } }),
         ...this.extraChatCompletionBody(),
         messages: [
-          { role: 'system', content: options.system ?? 'You are a subtitle translation engine. Return valid JSON only.' },
+          {
+            role: 'system',
+            content:
+              options.system ?? 'You are a subtitle translation engine. Return valid JSON only.',
+          },
           { role: 'user', content: prompt },
         ],
       }),
-    });
+    })
 
-    const responseText = await response.text();
+    const responseText = await response.text()
 
     if (response.ok) {
-      return { responseText };
+      return { responseText }
     }
 
     if (tokenLimitKey === 'max_tokens' && responseText.includes("'max_tokens' is not supported")) {
-      return this.fetchChatCompletion(prompt, options, 'max_completion_tokens');
+      return this.fetchChatCompletion(prompt, options, 'max_completion_tokens')
     }
 
-    throw new Error(`${this.providerLabel} request failed: ${response.status} ${responseText}`);
+    throw new Error(`${this.providerLabel} request failed: ${response.status} ${responseText}`)
   }
 }
 
 function extractOpenAiContent(json: OpenAiResponse): string | undefined {
   if (json.output_text) {
-    return json.output_text;
+    return json.output_text
   }
 
-  const content = json.choices?.[0]?.message?.content;
+  const content = json.choices?.[0]?.message?.content
 
   if (typeof content === 'string') {
-    return content;
+    return content
   }
 
   if (Array.isArray(content)) {
-    return content.map((part) => part.text ?? '').join('');
+    return content.map((part) => part.text ?? '').join('')
   }
 
-  return undefined;
+  return undefined
 }

@@ -1,18 +1,24 @@
-import type { CaptionSegment, CaptionTrack } from './caption-types';
-import type { ProviderType } from '../background/providers/types';
-import type { TranslateAsrSubtitleResult, TranslateSubtitleResult } from '../shared/messages';
+import type { CaptionSegment, CaptionTrack } from './caption-types'
+import type { ProviderType } from '../background/providers/types'
+import type { TranslateAsrSubtitleResult, TranslateSubtitleResult } from '../shared/messages'
 
 export interface TranslatorClient {
-  translateSubtitle(input: TranslateSubtitleInput, signal: AbortSignal): Promise<TranslateSubtitleResult | { ok: false; error: string }>;
-  translateAsrSubtitle(input: TranslateSubtitleInput, signal: AbortSignal): Promise<TranslateAsrSubtitleResult | { ok: false; error: string }>;
+  translateSubtitle(
+    input: TranslateSubtitleInput,
+    signal: AbortSignal,
+  ): Promise<TranslateSubtitleResult | { ok: false; error: string }>
+  translateAsrSubtitle(
+    input: TranslateSubtitleInput,
+    signal: AbortSignal,
+  ): Promise<TranslateAsrSubtitleResult | { ok: false; error: string }>
 }
 
 export interface TranslateSubtitleInput {
-  providerType: ProviderType;
-  videoId: string;
-  track: CaptionTrack;
-  segments: CaptionSegment[];
-  targetLanguage: string;
+  providerType: ProviderType
+  videoId: string
+  track: CaptionTrack
+  segments: CaptionSegment[]
+  targetLanguage: string
 }
 
 export function createRuntimeTranslatorClient(): TranslatorClient {
@@ -30,7 +36,7 @@ export function createRuntimeTranslatorClient(): TranslatorClient {
           startMs: segment.startMs,
           endMs: segment.endMs,
         })),
-      });
+      })
     },
     translateAsrSubtitle(input: TranslateSubtitleInput): Promise<TranslateAsrSubtitleResult> {
       return chrome.runtime.sendMessage({
@@ -44,7 +50,7 @@ export function createRuntimeTranslatorClient(): TranslatorClient {
           text: segment.text,
           startMs: segment.startMs,
         })),
-      });
+      })
     },
-  };
+  }
 }

@@ -1,63 +1,79 @@
-import { getCachedTranslations, setCachedTranslations } from '../cache';
-import { createProvider } from './factory';
-import { getProviderConfig, getProviderSecret, type ProviderStores } from './storage';
-import { validateAsrCues, validateManualTranslations } from '../../youtube/translation-validation';
-import type { ProviderType } from './types';
-import type { TranslateAsrSubtitleMessage, TranslateAsrSubtitleResult, TranslateSubtitleMessage, TranslateSubtitleResult } from '../../shared/messages';
+import { getCachedTranslations, setCachedTranslations } from '../cache'
+import { createProvider } from './factory'
+import { getProviderConfig, getProviderSecret, type ProviderStores } from './storage'
+import { validateAsrCues, validateManualTranslations } from '../../youtube/translation-validation'
+import type { ProviderType } from './types'
+import type {
+  TranslateAsrSubtitleMessage,
+  TranslateAsrSubtitleResult,
+  TranslateSubtitleMessage,
+  TranslateSubtitleResult,
+} from '../../shared/messages'
 
-export async function translateSubtitleMessage(message: TranslateSubtitleMessage, stores: ProviderStores): Promise<TranslateSubtitleResult> {
-  const providerConfig = await getProviderConfig(stores.sync, message.providerType);
-  const cacheKey = createWindowCacheKey(message, providerConfig.model);
-  const cached = await getCachedTranslations(stores.local, cacheKey);
-  const requestedIds = message.items.map((item) => item.id);
+export async function translateSubtitleMessage(
+  message: TranslateSubtitleMessage,
+  stores: ProviderStores,
+): Promise<TranslateSubtitleResult> {
+  const providerConfig = await getProviderConfig(stores.sync, message.providerType)
+  const cacheKey = createWindowCacheKey(message, providerConfig.model)
+  const cached = await getCachedTranslations(stores.local, cacheKey)
+  const requestedIds = message.items.map((item) => item.id)
 
   if (cached && cached.length > 0) {
-    return { ok: true, translations: validateManualTranslations(requestedIds, cached) };
+    return { ok: true, translations: validateManualTranslations(requestedIds, cached) }
   }
 
-  const provider = await resolveProvider(message.providerType, stores);
-  const providerItems = message.items.map((item, index) => ({ ...item, id: String(index) }));
-  const providerIdToSourceId = new Map(providerItems.map((item, index) => [item.id, message.items[index]?.id]));
+  const provider = await resolveProvider(message.providerType, stores)
+  const providerItems = message.items.map((item, index) => ({ ...item, id: String(index) }))
+  const providerIdToSourceId = new Map(
+    providerItems.map((item, index) => [item.id, message.items[index]?.id]),
+  )
   const result = await provider.translateManual({
     items: providerItems,
     targetLanguage: message.targetLanguage,
-  });
-  const providerTranslations = validateManualTranslations(providerItems.map((item) => item.id), result.translations);
+  })
+  const providerTranslations = validateManualTranslations(
+    providerItems.map((item) => item.id),
+    result.translations,
+  )
   const translations = providerTranslations.flatMap((item) => {
-    const sourceId = providerIdToSourceId.get(item.id);
-    return sourceId ? [{ id: sourceId, text: item.text }] : [];
-  });
+    const sourceId = providerIdToSourceId.get(item.id)
+    return sourceId ? [{ id: sourceId, text: item.text }] : []
+  })
 
   if (translations.length > 0) {
-    await setCachedTranslations(stores.local, cacheKey, translations);
+    await setCachedTranslations(stores.local, cacheKey, translations)
   }
 
   return {
     ok: true,
     translations,
     usage: result.usage,
-  };
+  }
 }
 
-export async function translateAsrSubtitleMessage(message: TranslateAsrSubtitleMessage, stores: ProviderStores): Promise<TranslateAsrSubtitleResult> {
-  const provider = await resolveProvider(message.providerType, stores);
+export async function translateAsrSubtitleMessage(
+  message: TranslateAsrSubtitleMessage,
+  stores: ProviderStores,
+): Promise<TranslateAsrSubtitleResult> {
+  const provider = await resolveProvider(message.providerType, stores)
   const result = await provider.translateAsr({
     segments: message.segments,
     targetLanguage: message.targetLanguage,
-  });
-  const knownSegmentIds = message.segments.map((segment) => segment.id);
+  })
+  const knownSegmentIds = message.segments.map((segment) => segment.id)
 
   return {
     ok: true,
     cues: validateAsrCues(knownSegmentIds, result.cues),
     usage: result.usage,
-  };
+  }
 }
 
 function createWindowCacheKey(message: TranslateSubtitleMessage, model: string): string {
-  const first = message.items[0]?.startMs ?? 0;
-  const windowStartMs = Math.floor(first / 30_000) * 30_000;
-  const sourceHash = hashString(message.items.map((item) => `${item.id}:${item.text}`).join('\n'));
+  const first = message.items[0]?.startMs ?? 0
+  const windowStartMs = Math.floor(first / 30_000) * 30_000
+  const sourceHash = hashString(message.items.map((item) => `${item.id}:${item.text}`).join('\n'))
   return [
     'v1',
     message.videoId,
@@ -67,19 +83,19 @@ function createWindowCacheKey(message: TranslateSubtitleMessage, model: string):
     model,
     windowStartMs,
     sourceHash,
-  ].join('|');
+  ].join('|')
 }
 
 function hashString(input: string): string {
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < input.length; i += 1) {
-    hash = Math.imul(31, hash) + input.charCodeAt(i) | 0;
+    hash = (Math.imul(31, hash) + input.charCodeAt(i)) | 0
   }
-  return Math.abs(hash).toString(36);
+  return Math.abs(hash).toString(36)
 }
 
 async function resolveProvider(providerType: ProviderType, stores: ProviderStores) {
-  const config = await getProviderConfig(stores.sync, providerType);
-  const secret = await getProviderSecret(stores.local, providerType);
-  return createProvider(config, secret);
+  const config = await getProviderConfig(stores.sync, providerType)
+  const secret = await getProviderSecret(stores.local, providerType)
+  return createProvider(config, secret)
 }

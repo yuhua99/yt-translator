@@ -151,39 +151,39 @@ ASR merge heuristic:
 ## Data Model
 
 ```ts
-export type CaptionKind = 'manual' | 'asr';
+export type CaptionKind = 'manual' | 'asr'
 
 export interface RawCaptionSegment {
-  id: string;
-  index: number;
-  startMs: number;
-  endMs: number;
-  text: string;
-  source?: 'json3' | 'vtt';
+  id: string
+  index: number
+  startMs: number
+  endMs: number
+  text: string
+  source?: 'json3' | 'vtt'
 }
 
 export interface CaptionCue {
-  id: string;
-  startMs: number;
-  endMs: number;
-  text: string;
-  sourceIds: string[];
+  id: string
+  startMs: number
+  endMs: number
+  text: string
+  sourceIds: string[]
 }
 
 export interface TranslatedCue {
-  id: string;
-  startMs: number;
-  endMs: number;
-  text: string;
+  id: string
+  startMs: number
+  endMs: number
+  text: string
 }
 
 export interface CaptionTrackIdentity {
-  videoId: string;
-  langCode?: string;
-  name?: string;
-  kind: CaptionKind;
-  vssId?: string;
-  urlHash?: string;
+  videoId: string
+  langCode?: string
+  name?: string
+  kind: CaptionKind
+  vssId?: string
+  urlHash?: string
 }
 ```
 
@@ -250,12 +250,12 @@ Value:
 
 ```ts
 interface TranslationWindowCacheEntry {
-  key: string;
-  createdAt: number;
-  lastAccessedAt: number;
-  expiresAt: number;
-  sizeBytes: number;
-  cues: TranslatedCue[];
+  key: string
+  createdAt: number
+  lastAccessedAt: number
+  expiresAt: number
+  sizeBytes: number
+  cues: TranslatedCue[]
 }
 ```
 
@@ -314,14 +314,14 @@ Behavior:
 Settings:
 
 ```ts
-export type ProviderType = 'openai' | 'anthropic' | 'opencodeZen';
+export type ProviderType = 'openai' | 'anthropic' | 'opencodeZen'
 
 export interface ExtensionSettings {
-  activeProvider: ProviderType;
-  targetLang: TargetLangCode;
-  customInstruction?: string;
-  models: Record<ProviderType, string>;
-  apiKeys: Partial<Record<ProviderType, string>>;
+  activeProvider: ProviderType
+  targetLang: TargetLangCode
+  customInstruction?: string
+  models: Record<ProviderType, string>
+  apiKeys: Partial<Record<ProviderType, string>>
 }
 ```
 
@@ -330,7 +330,7 @@ One API key per provider.
 Target languages fixed:
 
 ```ts
-[
+;[
   { code: 'zh-TW', label: '繁體中文' },
   { code: 'zh-CN', label: '简体中文' },
   { code: 'en', label: 'English' },
@@ -338,7 +338,7 @@ Target languages fixed:
   { code: 'ko', label: '한국어' },
   { code: 'es', label: 'Español' },
   { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' }
+  { code: 'de', label: 'Deutsch' },
 ]
 ```
 
@@ -371,27 +371,27 @@ Unified interface:
 
 ```ts
 export interface JsonCompletionRequest {
-  model: string;
-  system: string;
-  user: string;
-  temperature?: number;
-  schemaName: string;
-  schema: unknown;
+  model: string
+  system: string
+  user: string
+  temperature?: number
+  schemaName: string
+  schema: unknown
 }
 
 export interface ProviderJsonResult<T> {
-  data: T;
+  data: T
   usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-  };
-  raw?: unknown;
+    inputTokens?: number
+    outputTokens?: number
+  }
+  raw?: unknown
 }
 
 export interface AiProvider {
-  type: ProviderType;
-  completeJson<T>(request: JsonCompletionRequest): Promise<ProviderJsonResult<T>>;
-  testConnection(model: string): Promise<void>;
+  type: ProviderType
+  completeJson<T>(request: JsonCompletionRequest): Promise<ProviderJsonResult<T>>
+  testConnection(model: string): Promise<void>
 }
 ```
 
@@ -410,12 +410,8 @@ Input payload to provider prompt includes:
     { "id": "cue-1", "text": "Hello" },
     { "id": "cue-2", "text": "world" }
   ],
-  "contextBefore": [
-    { "id": "ctx-1", "text": "..." }
-  ],
-  "contextAfter": [
-    { "id": "ctx-2", "text": "..." }
-  ]
+  "contextBefore": [{ "id": "ctx-1", "text": "..." }],
+  "contextAfter": [{ "id": "ctx-2", "text": "..." }]
 }
 ```
 

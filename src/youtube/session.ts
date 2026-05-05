@@ -1,20 +1,26 @@
-import { mergeAsrSegments } from './asr-merge';
-import { parseCapturedCaptions } from './caption-parser';
-import type { CaptionMode, CaptionSegment, CaptionTrack, CapturedCaptionResponse, TranslatedCue } from './caption-types';
-import { planTranslationWindows, type TranslationWindow } from './scheduler';
-import type { TranslatorClient } from './translator-client';
-import type { ExtensionSettings } from '../shared/messages';
+import { mergeAsrSegments } from './asr-merge'
+import { parseCapturedCaptions } from './caption-parser'
+import type {
+  CaptionMode,
+  CaptionSegment,
+  CaptionTrack,
+  CapturedCaptionResponse,
+  TranslatedCue,
+} from './caption-types'
+import { planTranslationWindows, type TranslationWindow } from './scheduler'
+import type { TranslatorClient } from './translator-client'
+import type { ExtensionSettings } from '../shared/messages'
 
 export class YoutubeSubtitleSession {
-  videoId = '';
-  track?: CaptionTrack;
-  mode?: CaptionMode;
-  segments: CaptionSegment[] = [];
-  translatedCues: TranslatedCue[] = [];
-  inFlightWindows = new Set<string>();
-  completedWindows = new Set<string>();
-  abortController = new AbortController();
-  translatedSegmentIds = new Set<string>();
+  videoId = ''
+  track?: CaptionTrack
+  mode?: CaptionMode
+  segments: CaptionSegment[] = []
+  translatedCues: TranslatedCue[] = []
+  inFlightWindows = new Set<string>()
+  completedWindows = new Set<string>()
+  abortController = new AbortController()
+  translatedSegmentIds = new Set<string>()
 
   constructor(
     private readonly settings: ExtensionSettings,
@@ -22,46 +28,46 @@ export class YoutubeSubtitleSession {
   ) {}
 
   start(): void {
-    this.abortController = new AbortController();
+    this.abortController = new AbortController()
   }
 
   stop(): void {
-    this.abortController.abort();
-    this.inFlightWindows.clear();
+    this.abortController.abort()
+    this.inFlightWindows.clear()
   }
 
   resetForNavigation(videoId: string): void {
-    this.stop();
-    this.videoId = videoId;
-    this.track = undefined;
-    this.mode = undefined;
-    this.segments = [];
-    this.translatedCues = [];
-    this.translatedSegmentIds.clear();
-    this.completedWindows.clear();
-    this.start();
+    this.stop()
+    this.videoId = videoId
+    this.track = undefined
+    this.mode = undefined
+    this.segments = []
+    this.translatedCues = []
+    this.translatedSegmentIds.clear()
+    this.completedWindows.clear()
+    this.start()
   }
 
   handleCapturedCaptions(input: CapturedCaptionResponse): void {
-    const parsed = parseCapturedCaptions(input);
+    const parsed = parseCapturedCaptions(input)
 
     if (this.videoId && this.videoId !== parsed.track.videoId) {
-      this.resetForNavigation(parsed.track.videoId);
+      this.resetForNavigation(parsed.track.videoId)
     }
 
-    this.videoId = parsed.track.videoId;
-    this.track = parsed.track;
-    this.mode = parsed.track.mode;
-    this.segments = inferSegmentEndTimes(parsed.segments);
-    this.translatedCues = [];
-    this.translatedSegmentIds.clear();
-    this.inFlightWindows.clear();
-    this.completedWindows.clear();
+    this.videoId = parsed.track.videoId
+    this.track = parsed.track
+    this.mode = parsed.track.mode
+    this.segments = inferSegmentEndTimes(parsed.segments)
+    this.translatedCues = []
+    this.translatedSegmentIds.clear()
+    this.inFlightWindows.clear()
+    this.completedWindows.clear()
   }
 
   async ensureTranslations(currentTimeMs: number, ccEnabled: boolean): Promise<void> {
     if (!this.settings.enabled || !this.track) {
-      return;
+      return
     }
 
     const windows = planTranslationWindows({
@@ -69,118 +75,135 @@ export class YoutubeSubtitleSession {
       completedWindows: this.completedWindows,
       ccEnabled,
       currentTimeMs,
-    });
+    })
 
-    await Promise.all(windows.map((window) => this.translateWindow(window)));
+    await Promise.all(windows.map((window) => this.translateWindow(window)))
   }
 
   private async translateWindow(window: TranslationWindow): Promise<void> {
     if (!this.track) {
-      return;
+      return
     }
 
-    const segments = this.segmentsInWindow(window);
+    const segments = this.segmentsInWindow(window)
 
     if (segments.length === 0) {
-      this.completedWindows.add(window.id);
-      return;
+      this.completedWindows.add(window.id)
+      return
     }
 
-    this.inFlightWindows.add(window.id);
+    this.inFlightWindows.add(window.id)
 
     try {
-      const translatedIds = this.mode === 'asr'
-        ? await this.translateManualSegments(mergeAsrSegments(segments), true)
-        : await this.translateManualSegments(segments, false);
+      const translatedIds =
+        this.mode === 'asr'
+          ? await this.translateManualSegments(mergeAsrSegments(segments), true)
+          : await this.translateManualSegments(segments, false)
 
       for (const id of translatedIds) {
-        this.translatedSegmentIds.add(id);
+        this.translatedSegmentIds.add(id)
       }
 
-      this.completedWindows.add(window.id);
+      this.completedWindows.add(window.id)
     } catch (error) {
       if (!this.abortController.signal.aborted) {
-        console.warn('Simple Translator translation failed:', error);
+        console.warn('Simple Translator translation failed:', error)
       }
     } finally {
-      this.inFlightWindows.delete(window.id);
+      this.inFlightWindows.delete(window.id)
     }
   }
 
-  private async translateManualSegments(segments: CaptionSegment[], extendForReading: boolean): Promise<string[]> {
+  private async translateManualSegments(
+    segments: CaptionSegment[],
+    extendForReading: boolean,
+  ): Promise<string[]> {
     if (!this.track) {
-      return [];
+      return []
     }
 
-    const result = await this.translatorClient.translateSubtitle({
-      providerType: this.settings.providerType,
-      videoId: this.videoId,
-      track: this.track,
-      segments,
-      targetLanguage: this.settings.targetLanguage,
-    }, this.abortController.signal);
+    const result = await this.translatorClient.translateSubtitle(
+      {
+        providerType: this.settings.providerType,
+        videoId: this.videoId,
+        track: this.track,
+        segments,
+        targetLanguage: this.settings.targetLanguage,
+      },
+      this.abortController.signal,
+    )
 
     if (!result.ok) {
-      throw new Error(result.error);
+      throw new Error(result.error)
     }
 
-    const translations = new Map(result.translations.map((item) => [item.id, item.text]));
-    const translatedIds: string[] = [];
+    const translations = new Map(result.translations.map((item) => [item.id, item.text]))
+    const translatedIds: string[] = []
 
     for (const segment of segments) {
-      const translatedText = translations.get(segment.id);
+      const translatedText = translations.get(segment.id)
 
       if (!translatedText) {
-        continue;
+        continue
       }
 
       this.upsertTranslatedCue({
         id: segment.id,
         startMs: segment.startMs,
-        endMs: extendForReading ? adjustCueEndMs(segment.startMs, segment.endMs ?? segment.startMs + 1_500, translatedText) : segment.endMs ?? segment.startMs + 1_500,
+        endMs: extendForReading
+          ? adjustCueEndMs(
+              segment.startMs,
+              segment.endMs ?? segment.startMs + 1_500,
+              translatedText,
+            )
+          : (segment.endMs ?? segment.startMs + 1_500),
         sourceText: segment.text,
         translatedText,
         sourceSegmentIds: [segment.id],
-      });
-      translatedIds.push(segment.id);
+      })
+      translatedIds.push(segment.id)
     }
 
-    return translatedIds;
+    return translatedIds
   }
 
   private upsertTranslatedCue(cue: TranslatedCue): void {
-    const existingIndex = this.translatedCues.findIndex((item) => item.id === cue.id || item.startMs === cue.startMs);
+    const existingIndex = this.translatedCues.findIndex(
+      (item) => item.id === cue.id || item.startMs === cue.startMs,
+    )
     if (existingIndex >= 0) {
-      this.translatedCues[existingIndex] = cue;
+      this.translatedCues[existingIndex] = cue
     } else {
-      this.translatedCues.push(cue);
+      this.translatedCues.push(cue)
     }
 
-    this.translatedCues.sort((left, right) => left.startMs - right.startMs);
+    this.translatedCues.sort((left, right) => left.startMs - right.startMs)
   }
 
   private segmentsInWindow(window: TranslationWindow): CaptionSegment[] {
-    return this.segments.filter((segment) => segment.startMs >= window.startMs && segment.startMs < window.endMs);
+    return this.segments.filter(
+      (segment) => segment.startMs >= window.startMs && segment.startMs < window.endMs,
+    )
   }
 }
 
-const READ_MS_PER_CHAR = 200;
-const MIN_READ_MS = 800;
-const FALLBACK_SEGMENT_MS = 1_500;
+const READ_MS_PER_CHAR = 200
+const MIN_READ_MS = 800
+const FALLBACK_SEGMENT_MS = 1_500
 
 function inferSegmentEndTimes(segments: readonly CaptionSegment[]): CaptionSegment[] {
   return segments.map((segment, index) => {
-    if (segment.endMs !== undefined) return segment;
+    if (segment.endMs !== undefined) return segment
 
-    const next = segments[index + 1];
+    const next = segments[index + 1]
     return {
       ...segment,
       endMs: next ? Math.max(segment.startMs, next.startMs) : segment.startMs + FALLBACK_SEGMENT_MS,
-    };
-  });
+    }
+  })
 }
 
 function adjustCueEndMs(startMs: number, endMs: number, text: string): number {
-  const readMs = Math.max(MIN_READ_MS, Array.from(text).length * READ_MS_PER_CHAR);
-  return Math.max(endMs, startMs + readMs);
+  const readMs = Math.max(MIN_READ_MS, Array.from(text).length * READ_MS_PER_CHAR)
+  return Math.max(endMs, startMs + readMs)
 }

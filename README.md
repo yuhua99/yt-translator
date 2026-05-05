@@ -17,21 +17,21 @@ bun run check
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `bun run build` | Build → `dist/` |
-| `bun run dev` | Watch rebuild |
-| `bun run typecheck` | TypeScript check |
-| `bun run lint` | oxlint |
-| `bun test` | Unit tests |
-| `bun run check` | Full CI: typecheck + lint + test + build |
+| Command             | Description                              |
+| ------------------- | ---------------------------------------- |
+| `bun run build`     | Build → `dist/`                          |
+| `bun run dev`       | Watch rebuild                            |
+| `bun run typecheck` | TypeScript check                         |
+| `bun run lint`      | oxlint                                   |
+| `bun test`          | Unit tests                               |
+| `bun run check`     | Full CI: typecheck + lint + test + build |
 
 ## Providers
 
-| Provider | Endpoint |
-|----------|----------|
-| `openai` | `https://api.openai.com/v1/chat/completions` |
-| `anthropic` | `https://api.anthropic.com/v1/messages` |
+| Provider      | Endpoint                                         |
+| ------------- | ------------------------------------------------ |
+| `openai`      | `https://api.openai.com/v1/chat/completions`     |
+| `anthropic`   | `https://api.anthropic.com/v1/messages`          |
 | `opencodeZen` | `https://opencode.ai/zen/go/v1/chat/completions` |
 
 Model presets available per provider in Options; custom model IDs supported.

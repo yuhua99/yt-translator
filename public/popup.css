@@ -3,7 +3,9 @@ body {
   min-width: 260px;
   color: #f4f4f5;
   background: #111827;
-  font: 13px/1.4 system-ui, sans-serif;
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
 }
 
 main {

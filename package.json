@@ -8,12 +8,15 @@
     "dev": "bun run scripts/build.ts --watch",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "test": "bun test",
-    "check": "bun run typecheck && bun run lint && bun test && bun run build"
+    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun test && bun run build"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/chrome": "latest",
+    "oxfmt": "^0.47.0",
     "oxlint": "latest",
     "typescript": "latest"
   }

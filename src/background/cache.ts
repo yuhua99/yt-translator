@@ -1,95 +1,104 @@
-import type { ManualTranslationItem } from '../youtube/translation-validation';
+import type { ManualTranslationItem } from '../youtube/translation-validation'
 
 export interface CacheStorageArea {
-  get(key: string): Promise<Record<string, unknown>>;
-  set(items: Record<string, unknown>): Promise<void>;
+  get(key: string): Promise<Record<string, unknown>>
+  set(items: Record<string, unknown>): Promise<void>
 }
 
 interface CacheState {
-  entries: Record<string, CacheEntry>;
+  entries: Record<string, CacheEntry>
 }
 
 interface CacheEntry {
-  createdAt: number;
-  lastAccessedAt: number;
-  expiresAt: number;
-  sizeBytes: number;
-  translations: ManualTranslationItem[];
+  createdAt: number
+  lastAccessedAt: number
+  expiresAt: number
+  sizeBytes: number
+  translations: ManualTranslationItem[]
 }
 
-const CACHE_KEY = 'translationWindowCache';
-const TTL_MS = 3 * 24 * 60 * 60 * 1000;
-const MAX_BYTES = 5 * 1024 * 1024;
+const CACHE_KEY = 'translationWindowCache'
+const TTL_MS = 3 * 24 * 60 * 60 * 1000
+const MAX_BYTES = 5 * 1024 * 1024
 
-export async function getCachedTranslations(storage: CacheStorageArea, key: string): Promise<ManualTranslationItem[] | undefined> {
-  const state = await readState(storage);
-  const entry = state.entries[key];
-  const now = Date.now();
+export async function getCachedTranslations(
+  storage: CacheStorageArea,
+  key: string,
+): Promise<ManualTranslationItem[] | undefined> {
+  const state = await readState(storage)
+  const entry = state.entries[key]
+  const now = Date.now()
 
-  if (!entry) return undefined;
+  if (!entry) return undefined
   if (entry.expiresAt <= now) {
-    delete state.entries[key];
-    await writeState(storage, state);
-    return undefined;
+    delete state.entries[key]
+    await writeState(storage, state)
+    return undefined
   }
 
-  entry.lastAccessedAt = now;
-  await writeState(storage, rotate(state));
-  return entry.translations;
+  entry.lastAccessedAt = now
+  await writeState(storage, rotate(state))
+  return entry.translations
 }
 
-export async function setCachedTranslations(storage: CacheStorageArea, key: string, translations: ManualTranslationItem[]): Promise<void> {
-  const state = await readState(storage);
-  const now = Date.now();
+export async function setCachedTranslations(
+  storage: CacheStorageArea,
+  key: string,
+  translations: ManualTranslationItem[],
+): Promise<void> {
+  const state = await readState(storage)
+  const now = Date.now()
   const entry: CacheEntry = {
     createdAt: now,
     lastAccessedAt: now,
     expiresAt: now + TTL_MS,
     sizeBytes: byteLength(JSON.stringify(translations)),
     translations,
-  };
+  }
 
-  state.entries[key] = entry;
-  await writeState(storage, rotate(state));
+  state.entries[key] = entry
+  await writeState(storage, rotate(state))
 }
 
 export async function clearTranslationCache(storage: CacheStorageArea): Promise<void> {
-  await storage.set({ [CACHE_KEY]: { entries: {} } satisfies CacheState });
+  await storage.set({ [CACHE_KEY]: { entries: {} } satisfies CacheState })
 }
 
 function rotate(state: CacheState): CacheState {
-  const now = Date.now();
+  const now = Date.now()
   for (const [key, entry] of Object.entries(state.entries)) {
-    if (entry.expiresAt <= now) delete state.entries[key];
+    if (entry.expiresAt <= now) delete state.entries[key]
   }
 
-  let total = totalBytes(state);
-  if (total <= MAX_BYTES) return state;
+  let total = totalBytes(state)
+  if (total <= MAX_BYTES) return state
 
-  const entries = Object.entries(state.entries).sort(([, a], [, b]) => a.lastAccessedAt - b.lastAccessedAt);
+  const entries = Object.entries(state.entries).sort(
+    ([, a], [, b]) => a.lastAccessedAt - b.lastAccessedAt,
+  )
   for (const [key, entry] of entries) {
-    delete state.entries[key];
-    total -= entry.sizeBytes;
-    if (total <= MAX_BYTES) break;
+    delete state.entries[key]
+    total -= entry.sizeBytes
+    if (total <= MAX_BYTES) break
   }
 
-  return state;
+  return state
 }
 
 async function readState(storage: CacheStorageArea): Promise<CacheState> {
-  const stored = await storage.get(CACHE_KEY);
-  const state = stored[CACHE_KEY] as CacheState | undefined;
-  return state?.entries ? state : { entries: {} };
+  const stored = await storage.get(CACHE_KEY)
+  const state = stored[CACHE_KEY] as CacheState | undefined
+  return state?.entries ? state : { entries: {} }
 }
 
 async function writeState(storage: CacheStorageArea, state: CacheState): Promise<void> {
-  await storage.set({ [CACHE_KEY]: state });
+  await storage.set({ [CACHE_KEY]: state })
 }
 
 function totalBytes(state: CacheState): number {
-  return Object.values(state.entries).reduce((sum, entry) => sum + entry.sizeBytes, 0);
+  return Object.values(state.entries).reduce((sum, entry) => sum + entry.sizeBytes, 0)
 }
 
 function byteLength(input: string): number {
-  return new TextEncoder().encode(input).byteLength;
+  return new TextEncoder().encode(input).byteLength
 }

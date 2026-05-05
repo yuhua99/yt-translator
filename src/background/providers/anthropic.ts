@@ -1,13 +1,22 @@
-import { parseJsonObject } from './json';
-import { createAsrPrompt, createManualPrompt } from './prompts';
-import type { AiProvider, AsrTranslateInput, AsrTranslateOutput, ManualTranslateInput, ManualTranslateOutput, ProviderConfig, ProviderSecret, ProviderTestOutput } from './types';
+import { parseJsonObject } from './json'
+import { createAsrPrompt, createManualPrompt } from './prompts'
+import type {
+  AiProvider,
+  AsrTranslateInput,
+  AsrTranslateOutput,
+  ManualTranslateInput,
+  ManualTranslateOutput,
+  ProviderConfig,
+  ProviderSecret,
+  ProviderTestOutput,
+} from './types'
 
 interface AnthropicResponse {
-  content?: Array<{ type: string; text?: string }>;
+  content?: Array<{ type: string; text?: string }>
   usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
-  };
+    input_tokens?: number
+    output_tokens?: number
+  }
 }
 
 export class AnthropicProvider implements AiProvider {
@@ -17,31 +26,37 @@ export class AnthropicProvider implements AiProvider {
   ) {}
 
   async translateManual(input: ManualTranslateInput): Promise<ManualTranslateOutput> {
-    const response = await this.complete(createManualPrompt(input));
-    const parsed = parseJsonObject<ManualTranslateOutput>(response.content);
-    return { ...parsed, usage: response.usage };
+    const response = await this.complete(createManualPrompt(input))
+    const parsed = parseJsonObject<ManualTranslateOutput>(response.content)
+    return { ...parsed, usage: response.usage }
   }
 
   async translateAsr(input: AsrTranslateInput): Promise<AsrTranslateOutput> {
-    const response = await this.complete(createAsrPrompt(input));
-    const parsed = parseJsonObject<AsrTranslateOutput>(response.content);
-    return { ...parsed, usage: response.usage };
+    const response = await this.complete(createAsrPrompt(input))
+    const parsed = parseJsonObject<AsrTranslateOutput>(response.content)
+    return { ...parsed, usage: response.usage }
   }
 
   async testConnection(): Promise<ProviderTestOutput> {
-    const response = await this.complete('Reply exactly: OK', { maxTokens: 40, system: 'Reply exactly: OK' });
-    const text = response.content.trim();
+    const response = await this.complete('Reply exactly: OK', {
+      maxTokens: 40,
+      system: 'Reply exactly: OK',
+    })
+    const text = response.content.trim()
     if (text !== 'OK') {
-      throw new Error(`Provider test failed: expected OK, got ${text}`);
+      throw new Error(`Provider test failed: expected OK, got ${text}`)
     }
-    return { ok: true, text, usage: response.usage };
+    return { ok: true, text, usage: response.usage }
   }
 
-  private async complete(prompt: string, options: { maxTokens?: number; system?: string } = {}): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
-    const apiKey = this.secret.apiKey;
+  private async complete(
+    prompt: string,
+    options: { maxTokens?: number; system?: string } = {},
+  ): Promise<{ content: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
+    const apiKey = this.secret.apiKey
 
     if (!apiKey) {
-      throw new Error(`Missing API key for provider: ${this.config.type}`);
+      throw new Error(`Missing API key for provider: ${this.config.type}`)
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -58,17 +73,17 @@ export class AnthropicProvider implements AiProvider {
         system: options.system ?? 'You are a subtitle translation engine. Return valid JSON only.',
         messages: [{ role: 'user', content: prompt }],
       }),
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Anthropic request failed: ${response.status} ${await response.text()}`);
+      throw new Error(`Anthropic request failed: ${response.status} ${await response.text()}`)
     }
 
-    const json = await response.json() as AnthropicResponse;
-    const content = json.content?.find((item) => item.type === 'text')?.text;
+    const json = (await response.json()) as AnthropicResponse
+    const content = json.content?.find((item) => item.type === 'text')?.text
 
     if (!content) {
-      throw new Error('Anthropic response missing text content');
+      throw new Error('Anthropic response missing text content')
     }
 
     return {
@@ -77,6 +92,6 @@ export class AnthropicProvider implements AiProvider {
         inputTokens: json.usage?.input_tokens,
         outputTokens: json.usage?.output_tokens,
       },
-    };
+    }
   }
 }
