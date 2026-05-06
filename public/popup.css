@@ -52,19 +52,6 @@ label {
   color: #94a3b8;
 }
 
-.toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: #f4f4f5;
-}
-
-input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
-}
-
 button,
 input,
 select {

@@ -6,6 +6,7 @@ import {
 import { hideNativeCaptions, showNativeCaptions } from '../youtube/native-caption-hider'
 
 import { YoutubeSubtitleSession } from '../youtube/session'
+import { injectTranslateToggle } from '../youtube/translate-toggle'
 import { showStatusOverlay } from '../youtube/status-overlay'
 import { SubtitleOverlayRenderer } from '../youtube/subtitle-overlay-renderer'
 import { createRuntimeTranslatorClient } from '../youtube/translator-client'
@@ -297,6 +298,7 @@ function boot(): void {
   listenForPlayback()
   listenForNavigation()
   listenForSettingsChanges()
+  injectTranslateToggle()
   void applyStoredEnabledState()
 
   window.addEventListener('pagehide', () => {

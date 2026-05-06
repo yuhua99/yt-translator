@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Simple Translator",
   "description": "Translate YouTube subtitles with AI providers.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "action": {
     "default_title": "Simple Translator",
     "default_popup": "popup.html"

@@ -29,7 +29,6 @@ function requiredElement<T extends Element>(selector: string): T {
   return element
 }
 
-const enabledInput = requiredElement<HTMLInputElement>('#enabled')
 const targetLanguageInput = requiredElement<HTMLSelectElement>('#target-language')
 const providerTypeInput = requiredElement<HTMLSelectElement>('#provider-type')
 const providerModelPresetInput = requiredElement<HTMLSelectElement>('#provider-model-preset')
@@ -118,7 +117,6 @@ function updateSaveRequired(): void {
 
 function renderSettings(settings: ExtensionSettings): void {
   currentSettings = settings
-  enabledInput.checked = settings.enabled
   renderTargetLanguages(settings.targetLanguage)
   renderProviderTypes(settings.providerType)
   renderModelPresets(settings.providerType)
@@ -147,21 +145,6 @@ async function loadSettings(): Promise<void> {
       providerType: response.settings.providerType,
     }),
   )
-}
-
-async function saveEnabled(enabled: boolean): Promise<void> {
-  enabledInput.disabled = true
-  const settings = { ...currentSettings, enabled }
-  const response = await sendMessage<SettingsResponse>({ type: 'SET_SETTINGS', settings })
-
-  enabledInput.disabled = false
-  if (!response.ok) {
-    enabledInput.checked = currentSettings.enabled
-    status.textContent = response.error
-    return
-  }
-
-  currentSettings = response.settings
 }
 
 async function saveSettings(): Promise<void> {
@@ -231,10 +214,6 @@ async function saveSettings(): Promise<void> {
     saveButton.disabled = false
   }
 }
-
-enabledInput.addEventListener('change', () => {
-  void saveEnabled(enabledInput.checked)
-})
 
 providerTypeInput.addEventListener('change', () => {
   renderModelPresets(getProviderType())
