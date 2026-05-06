@@ -1,7 +1,11 @@
 import { getCachedTranslations, setCachedTranslations } from '../cache'
 import { createProvider } from './factory'
 import { getProviderConfig, getProviderSecret, type ProviderStores } from './storage'
-import { missingManualTranslationIds, validateAsrCues, validateManualTranslations } from '../../youtube/translation-validation'
+import {
+  missingManualTranslationIds,
+  validateAsrCues,
+  validateManualTranslations,
+} from '../../youtube/translation-validation'
 import type { ProviderType } from './types'
 import type {
   TranslateAsrSubtitleMessage,

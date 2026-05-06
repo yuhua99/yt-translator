@@ -18,20 +18,14 @@ describe('mergeAsrSegments', () => {
   })
 
   test('merges segments within gap threshold', () => {
-    const merged = mergeAsrSegments([
-      seg(0, 'Hello '),
-      seg(400, 'world'),
-    ])
+    const merged = mergeAsrSegments([seg(0, 'Hello '), seg(400, 'world')])
 
     expect(merged).toHaveLength(1)
     expect(merged[0]?.text).toBe('Hello world')
   })
 
   test('breaks on gap > 700ms', () => {
-    const merged = mergeAsrSegments([
-      seg(0, 'First.'),
-      seg(800, 'Second.'),
-    ])
+    const merged = mergeAsrSegments([seg(0, 'First.'), seg(800, 'Second.')])
 
     expect(merged).toHaveLength(2)
     expect(merged[0]?.text).toBe('First.')
@@ -67,10 +61,7 @@ describe('mergeAsrSegments', () => {
   })
 
   test('breaks on sentence-ending punctuation', () => {
-    const merged = mergeAsrSegments([
-      seg(0, 'Hello.'),
-      seg(200, 'World'),
-    ])
+    const merged = mergeAsrSegments([seg(0, 'Hello.'), seg(200, 'World')])
 
     expect(merged).toHaveLength(2)
     expect(merged[0]?.text).toBe('Hello.')
@@ -78,10 +69,7 @@ describe('mergeAsrSegments', () => {
   })
 
   test('breaks on Chinese punctuation', () => {
-    const merged = mergeAsrSegments([
-      seg(0, '你好！'),
-      seg(200, '世界'),
-    ])
+    const merged = mergeAsrSegments([seg(0, '你好！'), seg(200, '世界')])
 
     expect(merged).toHaveLength(2)
   })
@@ -103,10 +91,7 @@ describe('mergeAsrSegments', () => {
   })
 
   test('uses next group start as cue end', () => {
-    const merged = mergeAsrSegments([
-      seg(0, 'First group.'),
-      seg(400, 'Second group.'),
-    ])
+    const merged = mergeAsrSegments([seg(0, 'First group.'), seg(400, 'Second group.')])
 
     expect(merged).toHaveLength(2)
     expect(merged[0]?.endMs).toBe(400)

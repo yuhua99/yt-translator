@@ -73,7 +73,10 @@ export class OpenAiProvider implements AiProvider {
       try {
         return await this.fetchAndParse(prompt, options)
       } catch (error) {
-        if (error instanceof SyntaxError || (error instanceof Error && /JSON|parse/i.test(error.message))) {
+        if (
+          error instanceof SyntaxError ||
+          (error instanceof Error && /JSON|parse/i.test(error.message))
+        ) {
           // Fall through to retry without json_object
         } else {
           throw error
@@ -109,10 +112,7 @@ export class OpenAiProvider implements AiProvider {
     return {}
   }
 
-  private async fetchChatCompletion(
-    prompt: string,
-    options: CompletionOptions,
-  ): Promise<string> {
+  private async fetchChatCompletion(prompt: string, options: CompletionOptions): Promise<string> {
     const response = await fetch(`${this.defaultBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {

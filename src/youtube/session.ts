@@ -111,7 +111,12 @@ export class YoutubeSubtitleSession {
       const contextAfter = this.getContextCues(window, 'after', 2)
       const translatedIds =
         this.mode === 'asr'
-          ? await this.translateManualSegments(mergeAsrSegments(segments), true, contextBefore, contextAfter)
+          ? await this.translateManualSegments(
+              mergeAsrSegments(segments),
+              true,
+              contextBefore,
+              contextAfter,
+            )
           : await this.translateManualSegments(segments, false, contextBefore, contextAfter)
 
       for (const id of translatedIds) {

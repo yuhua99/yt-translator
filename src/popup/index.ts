@@ -127,7 +127,7 @@ function renderProviderConfig(response: ProviderConfigResponse): void {
   savedModel = response.config.model
   renderProviderTypes(response.config.type)
   renderModelPresets(response.config.type, response.config.model)
-  updateSaveRequired()  // called once, after model is known
+  updateSaveRequired() // called once, after model is known
 }
 
 async function loadSettings(): Promise<void> {
