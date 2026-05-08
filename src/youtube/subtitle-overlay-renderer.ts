@@ -21,6 +21,8 @@ export function findActiveCue(
 }
 
 export class SubtitleOverlayRenderer {
+  private resizeObserver: ResizeObserver | null = null
+
   render(cues: readonly TranslatedCue[], currentTimeMs: number): void {
     const cue = findActiveCue(cues, currentTimeMs)
     const overlay = this.ensureOverlay()
@@ -29,7 +31,16 @@ export class SubtitleOverlayRenderer {
   }
 
   clear(): void {
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = null
     document.getElementById(OVERLAY_ID)?.remove()
+  }
+
+  private syncFontSize(overlay: HTMLElement): void {
+    const video = document.querySelector<HTMLVideoElement>('video')
+    overlay.style.fontSize = video?.offsetHeight
+      ? `${Math.round(video.offsetHeight * 0.045)}px`
+      : '18px'
   }
 
   private ensureOverlay(): HTMLElement {
@@ -38,31 +49,35 @@ export class SubtitleOverlayRenderer {
 
     const overlay = document.createElement('div')
     overlay.id = OVERLAY_ID
-    overlay.style.position = 'absolute'
-    overlay.style.left = '50%'
-    overlay.style.bottom = '10%'
-    overlay.style.transform = 'translateX(-50%)'
-    overlay.style.zIndex = '60'
-    overlay.style.maxWidth = '82%'
-    overlay.style.padding = '4px 8px'
-    overlay.style.borderRadius = '4px'
-    overlay.style.color = 'white'
-    overlay.style.background = 'rgba(8, 8, 8, 0.75)'
-    overlay.style.font = readNativeFont()
-    overlay.style.textAlign = 'center'
-    overlay.style.whiteSpace = 'pre-wrap'
-    overlay.style.pointerEvents = 'none'
+    Object.assign(overlay.style, {
+      position: 'absolute',
+      left: '50%',
+      bottom: '10%',
+      transform: 'translateX(-50%)',
+      zIndex: '60',
+      maxWidth: '82%',
+      padding: '4px 8px',
+      borderRadius: '4px',
+      color: 'white',
+      background: 'rgba(8, 8, 8, 0.75)',
+      lineHeight: '1.35',
+      fontFamily: 'system-ui, sans-serif',
+      textAlign: 'center',
+      whiteSpace: 'pre-wrap',
+      pointerEvents: 'none',
+    })
 
     const player = document.querySelector<HTMLElement>('#movie_player') ?? document.body
     player.append(overlay)
+
+    this.syncFontSize(overlay)
+    const video = document.querySelector<HTMLVideoElement>('video')
+    if (video) {
+      this.resizeObserver = new ResizeObserver(() => this.syncFontSize(overlay))
+      this.resizeObserver.observe(video)
+    }
+
     return overlay
   }
 }
 
-function readNativeFont(): string {
-  const segment = document.querySelector<HTMLElement>('.ytp-caption-segment')
-  if (!segment) return 'clamp(18px, 3.5vw, 34px)/1.35 system-ui, sans-serif'
-
-  const style = getComputedStyle(segment)
-  return `${style.fontStyle} ${style.fontWeight} ${style.fontSize}/${style.lineHeight} ${style.fontFamily}`
-}
